@@ -194,9 +194,11 @@
     setLoading(true);
     fetch("/submit_turn",{method:"POST",headers:{'Content-Type':'application/json'},
       body:JSON.stringify({session_id:sessionId,instruction:userInstruction.value,agent_name:me})})
-    .then(r=>r.json()).then(res=>{
+      .then(r=>r.json()).then(res=>{
       if(res.dialogue_segment) appendDialogue(res.dialogue_segment);
-      userInstruction.value=""; if(res.game_over) endGame(res.outcome_label,res.outcome,res.message); else setLoading(false);
+      userInstruction.value="";
+      if(res.game_over) endGame(res.outcome_label,res.outcome,res.message);
+      else setLoading(false);
     }).catch(e=>{endGame(null,null,e.message);});
   };
 
@@ -218,3 +220,4 @@
   </script>
 </body>
 </html>
+

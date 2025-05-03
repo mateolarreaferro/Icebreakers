@@ -6,9 +6,9 @@ from llm_utils import run_script
 
 app = Flask(__name__)
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 #  Models
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 class Agent:
     def __init__(self, name: str, persona: str):
         self.name    = name.strip()
@@ -17,7 +17,7 @@ class Agent:
 
 class Room:
     """Multi‑turn simulation with dialogue history and post‑round twists."""
-    def __init__(self, scenario_id: str, agents: list[Agent]):
+    def __init__(self, scenario_id: str, agents: list["Agent"]):
         self.agents   = agents
         self.scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
         if not self.scenario:
@@ -25,54 +25,62 @@ class Room:
 
         self.dialogue_history = []
         self.game_over        = False
-        self.outcome          = None      # list of survivors / released / etc.
-        # make a copy so we can pop twists without mutating the global data
+        self.outcome          = None        # survivors / released / etc.
+        # copy twists so the global list isn’t mutated
         self.twists_remaining = self.scenario.get("twists", []).copy()
 
-    # ── prompt builder ────────────────────────────────────────────────────────
+    # ── prompt builder ────────────────────────────────────────────────────
     def _build_turn_prompt(
         self, user_agent_name: str, user_instruction: str
     ) -> tuple[str, str]:
         system_prompt = (
-            "You are the **Game Master**.\n"
-            "• Narration lines must start with **GM:**\n"
-            "• Speech lines must start with **Name:**\n"
-            "• Keep the reply to one immediate turn.\n"
+            "You control the Game Master **and** all NPCs "
+            f"(everyone except {user_agent_name}).\n"
+            "Produce exactly **one turn** with **max five** lines, "
+            "in *this order*:\n"
+            f"1. **GM:** one narration line.\n"
+            f"2. **{user_agent_name}:** obeys the director’s order.\n"
+            "3. 1‑3 lines from **other agents** who naturally respond.\n\n"
             f"{self.scenario['survival_rule']}"
         )
 
         agent_intros = "\n".join(f"- {ag.name}: {ag.persona}" for ag in self.agents)
-        history      = "\n".join(self.dialogue_history)
+        history      = "\n".join(self.dialogue_history) or "*none yet*"
 
         user_prompt = (
-            f"Scenario: {self.scenario['title']}\n"
-            f"Setup: {self.scenario['setup']}\n\n"
-            f"Agents:\n{agent_intros}\n\n"
-            f"Dialogue History:\n{history}\n\n"
-            f"User’s instruction for {user_agent_name}: “{user_instruction}”\n\n"
-            "Continue the simulation."
+            f"### Scenario\n{self.scenario['title']}\n"
+            f"### Setup\n{self.scenario['setup']}\n\n"
+            f"### Cast\n{agent_intros}\n\n"
+            f"### Dialogue so far\n{history}\n\n"
+            f"### Director’s order to {user_agent_name}\n{user_instruction}\n\n"
+            "### Now produce the next turn following the required structure."
         )
         return system_prompt, user_prompt
 
-    # ── single simulation turn ────────────────────────────────────────────────
+    # ── single simulation turn ────────────────────────────────────────────
     def process_turn(self, user_agent_name: str, user_instruction: str) -> dict:
         if self.game_over:
-            return {
-                "dialogue_segment": "",
-                "game_over": True,
-                "outcome": self.outcome,
-            }
+            return {"dialogue_segment": "", "game_over": True, "outcome": self.outcome}
 
         sys_p, usr_p = self._build_turn_prompt(user_agent_name, user_instruction)
-        raw = run_script(sys_p, usr_p)
-        self.dialogue_history.append(raw.strip())
+        raw = run_script(sys_p, usr_p).strip()
 
-        # ── outcome parsing ──────────────────────────────────────────────────
+        # guarantee the directed agent appears; retry once if missing
+        if not re.search(rf"^{re.escape(user_agent_name)}:", raw, flags=re.I | re.M):
+            correction = (
+                f"\nThe previous answer lacked a line starting with "
+                f"“{user_agent_name}:”. Please comply with the template."
+            )
+            raw = run_script(sys_p, usr_p + correction).strip()
+
+        self.dialogue_history.append(raw)
+
+        # ── outcome parsing ───────────────────────────────────────────────
         rule_prefix = self.scenario["survival_rule"].split(":")[0].split()[-1]
         label       = f"{rule_prefix}:"
-        survivors, dialogue = [], raw.strip()
+        survivors, dialogue = [], raw
 
-        if label in raw.upper():                          # outcome reached
+        if label.upper() in raw.upper():                     # outcome reached
             parts     = re.split(rf"\n{label}", raw, flags=re.IGNORECASE)
             dialogue  = parts[0].strip()
             names_raw = (label + parts[1]).strip()
@@ -81,7 +89,7 @@ class Room:
             ]
             self.game_over, self.outcome = True, survivors
 
-        # ── inject a random twist if the game continues ─────────────────────
+        # ── inject a random twist if the game continues ──────────────────
         if not self.game_over and self.twists_remaining:
             twist = random.choice(self.twists_remaining)
             self.twists_remaining.remove(twist)
@@ -95,20 +103,18 @@ class Room:
             "outcome": self.outcome,
         }
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 #  Routes
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────
 game_sessions: dict[str, Room] = {}
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
 @app.route("/scenarios")
 def list_scenarios():
     return jsonify([{k: s[k] for k in ("id", "title")} for s in scenarios])
-
 
 @app.route("/start_game", methods=["POST"])
 def start_game():
@@ -124,7 +130,7 @@ def start_game():
     if not scenario:
         return jsonify({"error": f"Scenario '{scenario_id}' not found"}), 404
 
-    # ── build cast ──────────────────────────────────────────────────────────
+    # build cast
     user_agent    = Agent(user_name, user_persona)
     npcs          = [a for a in agent_list if a["name"].lower() != user_name.lower()]
     random.shuffle(npcs)
@@ -145,7 +151,6 @@ def start_game():
             "agents": [{"name": a.name, "persona": a.persona} for a in all_agents],
         }
     )
-
 
 @app.route("/submit_turn", methods=["POST"])
 def submit_turn():
@@ -170,7 +175,6 @@ def submit_turn():
         }.get(room.scenario["id"], "Outcome")
         result["outcome_label"] = lbl
     return jsonify(result)
-
 
 @app.route("/download", methods=["POST"])
 def download():
@@ -199,7 +203,6 @@ def download():
         download_name=f"{room.scenario['id']}_simulation.md",
         mimetype="text/markdown",
     )
-
 
 if __name__ == "__main__":
     app.run(debug=True)

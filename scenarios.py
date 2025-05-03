@@ -1,4 +1,4 @@
-# scenarios.py  ·  v3  (≤ 8 agents, twist lists for random events)
+# scenarios.py
 
 scenarios = [
     {
