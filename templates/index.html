@@ -2,226 +2,219 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Multi-Agent Simulator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Multi‑Agent Simulation</title>
 
-  <!-- libs (kept) -->
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tippy for persona tool‑tips -->
   <script src="https://unpkg.com/@popperjs/core@2"></script>
   <script src="https://unpkg.com/tippy.js@6"></script>
-  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
-
-  <!-- font & basic palette -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css"/>
 
   <style>
-    :root {
-      --primary:   #2563eb;        /* blue-600  */
-      --primary-inset: #1d4ed8;    /* blue-700  */
-      --text:      #334155;        /* slate-700 */
-      --bg:        #f8fafc;        /* slate-50  */
-      --card:      #ffffff;
-      --border:    #e2e8f0;        /* slate-200 */
-      --bubble-them: #e5e7eb;      /* slate-200 */
+    :root{
+      --gm-bg:#fef3c7; --gm-text:#92400e;
     }
-    /* reset + base */
-    *,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0}
-    body{
-      font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-      font-size:15px;line-height:1.48;
-      background:var(--bg);
-      color:var(--text);
-      -webkit-font-smoothing:antialiased;
-    }
-    h1{
-      text-align:center;
-      font-size:1.75rem;
-      margin:28px 0 22px;
-      color:var(--primary-inset);
-      letter-spacing:-.5px;
-    }
-
-    /* layout */
-    .container{max-width:820px;margin:0 auto;padding:0 24px 48px}
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:12px;
-      box-shadow:0 6px 14px rgba(0,0,0,.04);
-      padding:28px 24px 32px;
-      margin-bottom:32px;
-    }
-
-    /* inputs */
-    .form-group{margin-bottom:20px}
-    .form-group label{display:block;margin-bottom:6px;font-weight:600;font-size:.9rem}
-    input,select,textarea{
-      width:100%;padding:10px 12px;font-size:.9rem;
-      border:1px solid var(--border);border-radius:6px;
-      background:#fff;resize:none;
-    }
-    .input-with-prefix{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:6px}
-    .input-prefix{padding:10px 12px;border-bottom:1px solid var(--border);background:#f1f5f9;font-size:.9rem}
-    .input-with-prefix textarea{border:0;border-radius:0 0 6px 6px;min-height:90px}
-
-    /* buttons */
-    button{
-      cursor:pointer;border:0;border-radius:6px;
-      background:var(--primary);color:#fff;
-      padding:11px 20px;font-size:.92rem;font-weight:600;
-      transition:background .18s ease;
-    }
-    button:hover{background:var(--primary-inset)}
-    button:disabled{background:var(--border);cursor:not-allowed;color:#9ca3af}
-
-    /* dialogue area */
-    .dialogue{
-      margin-top:26px;padding-right:6px;max-height:70vh;overflow-y:auto;
-    }
-    .line{display:flex;gap:6px;margin-bottom:14px;opacity:0;animation:fadein .25s forwards}
-    .line.me{justify-content:flex-end}
-    .bubble{
-      max-width:72%;padding:10px 14px;border-radius:18px;
-      box-shadow:0 2px 6px rgba(0,0,0,.05);position:relative;
-    }
-      .speaker{
-        display:block;font-size:.72rem;font-weight:600;margin-bottom:4px;opacity:.8
-      }
-      .message{display:block;word-wrap:break-word}
-
-    .me .bubble{background:var(--primary);color:#fff}
-    .me .speaker{color:#c7d2fe;opacity:.9}
-    .them .bubble{background:var(--bubble-them);color:#000}
-    .survivors{margin-top:20px;font-weight:600}
-
-    @keyframes fadein{to{opacity:1}}
+    .bubble{word-break:break-word}
+    .gm   .bubble{background:var(--gm-bg);color:var(--gm-text);font-style:italic}
+    .gm   .speaker{color:var(--gm-text)}
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>Multi-Agent Simulator</h1>
+<body class="min-h-screen bg-slate-50 text-slate-700 flex flex-col items-center">
+  <div class="w-full max-w-3xl p-4">
+    <h1 class="text-3xl font-bold text-center text-blue-700 mb-6">Multi‑Agent Simulation</h1>
 
-    <!-- start card -->
-    <div id="start-card" class="card">
-      <div class="form-group">
-        <label for="scenario">Scenario</label>
-        <select id="scenario">
-          <option value="lifeboat">Spaceship – Lifeboat Crisis</option>
-          <option value="bank_heist">Bank Heist – Hostage Dilemma</option>
-          <option value="mars_outpost">Mars Outpost – Oxygen Rationing</option>
-          <option value="submarine_leak">Submarine – Rising Water</option>
-          <option value="expedition_blizzard">Arctic Expedition – Shelter Shortage</option>
-          <option value="time_paradox">Time Lab – Paradox Lockdown</option>
-        </select>
-      </div>
+    <!-- ── Start Card ─────────────────────────────────────────────────────── -->
+    <div id="start-card" class="bg-white shadow rounded-lg p-6 space-y-4">
+      <h2 class="text-xl font-semibold text-blue-700">Start a New Game</h2>
 
-      <div class="form-group">
-        <label for="agent-name">Your agent’s name</label>
-        <input id="agent-name" type="text" required />
-      </div>
+      <label class="block">
+        <span class="font-medium">Scenario</span>
+        <select id="scenario" class="mt-1 w-full border p-2 rounded"></select>
+        <p id="scenario-load-error" class="text-red-500 mt-1 hidden"></p>
+      </label>
 
-      <div class="form-group">
-        <label for="agent-persona">Your agent’s persona</label>
-        <div class="input-with-prefix">
-          <span class="input-prefix">You are…</span>
-          <textarea id="agent-persona" placeholder="a Master's student at Stanford University who…" required></textarea>
-        </div>
-      </div>
+      <label class="block">
+        <span class="font-medium">Your agent’s name</span>
+        <input id="agent-name" type="text" class="mt-1 w-full border p-2 rounded"/>
+      </label>
 
-      <button id="simulate-btn">Simulate</button>
+      <label class="block">
+        <span class="font-medium">Your agent’s persona</span>
+        <textarea id="agent-persona" class="mt-1 w-full border p-2 rounded h-24"
+                  placeholder="a Master's student at Stanford University who…"></textarea>
+      </label>
+
+      <button id="start-game-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">
+        Start Game
+      </button>
     </div>
 
-    <!-- results card -->
-    <div id="result-card" class="card" style="display:none">
-      <button id="reset-btn" style="float:right">New Simulation</button>
-      <h3 id="scenario-title" style="margin-top:0"></h3>
+    <!-- ── Game Card ──────────────────────────────────────────────────────── -->
+    <div id="game-card" class="bg-white shadow rounded-lg p-6 mt-6 hidden flex flex-col space-y-4">
+      <div class="flex justify-end space-x-2">
+        <button id="download-btn" class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded hidden">
+          Download
+        </button>
+        <button id="new-game-btn" class="bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded">
+          New Game
+        </button>
+      </div>
 
-      <div id="dialogue" class="dialogue"></div>
-      <div id="survivors" class="survivors"></div>
+      <div>
+        <h2 id="scenario-title" class="text-xl font-semibold"></h2>
+        <p id="initial-setup" class="mt-1"></p>
+      </div>
+
+      <div id="dialogue" class="flex flex-col space-y-4 max-h-[60vh] overflow-y-auto pr-2"></div>
+
+      <div id="game-over-area" class="text-center hidden">
+        <p class="font-semibold text-lg">Game Over!</p>
+        <p class="outcome mt-1"></p>
+        <p class="error-message text-red-500 mt-1 hidden"></p>
+      </div>
+
+      <div id="instruction-area" class="sticky bottom-0 bg-white pt-4 flex space-x-2">
+        <textarea id="user-instruction"
+                  class="flex-grow border rounded p-2 h-12 resize-none"
+                  placeholder="Tell your agent what to do…"></textarea>
+        <button id="submit-turn-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded">
+          Submit
+        </button>
+      </div>
     </div>
   </div>
 
+  <!-- ── Scripts ──────────────────────────────────────────────────────────── -->
   <script>
-    // ---------- elements ----------
-    const selScenario  = document.getElementById("scenario");
-    const agentName    = document.getElementById("agent-name");
-    const agentPersona = document.getElementById("agent-persona");
-    const simulateBtn  = document.getElementById("simulate-btn");
-    const resetBtn     = document.getElementById("reset-btn");
-    const startCard    = document.getElementById("start-card");
-    const resultCard   = document.getElementById("result-card");
-    const scenarioTitle= document.getElementById("scenario-title");
-    const dialogueBox  = document.getElementById("dialogue");
-    const survivorsBox = document.getElementById("survivors");
+  /* ── Elements ─────────────────────────────────────────────────────────── */
+  const el = id => document.getElementById(id);
+  const selScenario = el("scenario"),  scenarioLoadError = el("scenario-load-error");
+  const startCard   = el("start-card"), gameCard   = el("game-card");
+  const agentName   = el("agent-name"), agentPersona = el("agent-persona");
+  const dialogueBox = el("dialogue"),   instructionArea = el("instruction-area");
+  const userInstruction = el("user-instruction");
+  const newGameBtn = el("new-game-btn"), startGameBtn = el("start-game-btn");
+  const submitTurnBtn = el("submit-turn-btn"), downloadBtn = el("download-btn");
+  const outcomeDiv = document.querySelector(".outcome"), errorDiv = document.querySelector(".error-message");
+  const scenarioTitle = el("scenario-title"), initialSetup = el("initial-setup"), gameOverArea = el("game-over-area");
 
-    // outcome labels per scenario
-    const outcomeLabel = {
-      lifeboat:            "Survivors",
-      bank_heist:          "Released",
-      mars_outpost:        "Oxygen Recipients",
-      submarine_leak:      "Dive Team",
-      expedition_blizzard: "Sheltered",
-      time_paradox:        "Stabilized"
-    };
+  /* ── State ─────────────────────────────────────────────────────────────── */
+  let sessionId=null, me=null, personas={};
 
-    // ---------- helpers ----------
-    function lineHTML(name, text, me){
-      const side = me ? "me" : "them";
-      return `
-        <div class="line ${side}">
-          <div class="bubble">
-            <span class="speaker">${name}</span>
-            <span class="message">${text}</span>
-          </div>
-        </div>`;
-    }
-    function renderDialogue(raw, you){
-      dialogueBox.innerHTML = "";
-      raw.split("\n").forEach(l=>{
-        if(!l.trim()) return;
-        const [speaker,...rest] = l.split(":");
-        const text  = rest.join(":").trim();
-        const isMe  = speaker.trim() === you;
-        dialogueBox.insertAdjacentHTML("beforeend", lineHTML(speaker.trim(), text, isMe));
-      });
+  /* ── Helpers ───────────────────────────────────────────────────────────── */
+  const lineHTML = (speaker,text,side) => `
+    <div class="flex ${side==='me'?'justify-end':''} ${side==='gm'?'gm':''}">
+      <div class="bubble rounded-xl px-4 py-2 shadow max-w-[70%] ${side==='me'?'bg-blue-600 text-white':''} ${side==='them'?'bg-slate-200':''}">
+        <span class="speaker block text-xs font-semibold mb-1 opacity-80">${speaker}</span>
+        <span class="message block">${text}</span>
+      </div>
+    </div>`;
+
+  function appendDialogue(raw){
+    raw.split("\n").forEach(l=>{
+      if(!l.trim()) return;
+      const narrator = l.startsWith("GM:");
+      const parts    = narrator ? ["GM", l.slice(3)] : l.split(":");
+      if(parts.length<2){ return; }
+
+      const speaker = narrator ? "Game Master" : parts[0].trim();
+      const text    = narrator ? parts[1].trim() : parts.slice(1).join(":").trim();
+      const side    = narrator ? "gm" : (speaker===me ? "me" : "them");
+
+      dialogueBox.insertAdjacentHTML("beforeend", lineHTML(speaker,text,side));
+
+      // one‑time tooltip registration
+      if(!narrator && personas[speaker] && !document.querySelector(`[data-tip='${speaker}']`)){
+        const lastBubble = dialogueBox.lastElementChild.querySelector(".bubble");
+        lastBubble.setAttribute("data-tip", speaker);
+        lastBubble.setAttribute("data-tippy-content", personas[speaker]);
+        tippy(lastBubble, { theme:"light", maxWidth:220 });
+      }
+    });
+    dialogueBox.scrollTop = dialogueBox.scrollHeight;
+  }
+
+  const setLoading = flag=>{
+    submitTurnBtn.disabled=startGameBtn.disabled=userInstruction.disabled=flag;
+    submitTurnBtn.textContent = flag? "…" : "Submit";
+    startGameBtn.textContent  = flag? "…" : "Start Game";
+    if(flag){
+      dialogueBox.insertAdjacentHTML("beforeend",
+        '<div id="typing" class="flex gm"><div class="bubble rounded-xl px-4 py-2 shadow bg-amber-100"><span class="speaker block text-xs font-semibold mb-1">GM</span><span class="message">…</span></div></div>');
       dialogueBox.scrollTop = dialogueBox.scrollHeight;
+    }else{
+      document.getElementById("typing")?.remove();
     }
+  };
 
-    // ---------- simulate ----------
-    simulateBtn.addEventListener("click", ()=>{
-      const name    = agentName.value.trim();
-      const persona = agentPersona.value.trim();
-      const scenario_id = selScenario.value;
-      if(!name || !persona){alert("Please enter both name and persona.");return}
+  const endGame = (label,outcome,msg)=>{
+    setLoading(false);
+    instructionArea.classList.add("hidden");
+    gameOverArea.classList.remove("hidden");
+    outcomeDiv.textContent = label? `${label}: ${outcome.join(", ")}` : "";
+    errorDiv.textContent   = msg||"";
+    errorDiv.classList.toggle("hidden",!msg);
+    downloadBtn.classList.remove("hidden");
+  };
 
-      simulateBtn.disabled = true;
-      fetch("/simulate",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({scenario_id,name,persona})
-      })
-      .then(r=>r.json())
-      .then(res=>{
-        startCard.style.display="none";
-        resultCard.style.display="block";
-        scenarioTitle.textContent=selScenario.selectedOptions[0].textContent;
-        renderDialogue(res.dialogue, name);
-        survivorsBox.textContent = (res.survivors && res.survivors.length)
-          ? `${outcomeLabel[scenario_id] || "Outcome"}: ${res.survivors.join(", ")}`
-          : "";
-      })
-      .finally(()=>simulateBtn.disabled=false);
+  const reset = ()=>{
+    sessionId=null; me=null; personas={};
+    startCard.classList.remove("hidden"); gameCard.classList.add("hidden");
+    downloadBtn.classList.add("hidden"); dialogueBox.innerHTML=""; userInstruction.value="";
+    gameOverArea.classList.add("hidden"); instructionArea.classList.remove("hidden");
+  };
+
+  /* ── Page load: fetch scenarios ───────────────────────────────────────── */
+  fetch("/scenarios").then(r=>r.json()).then(list=>{
+    selScenario.innerHTML=list.map(s=>`<option value="${s.id}">${s.title}</option>`).join("");
+  }).catch(e=>{
+    scenarioLoadError.textContent="Could not load scenarios."; scenarioLoadError.classList.remove("hidden");
+  });
+
+  /* ── Event listeners ──────────────────────────────────────────────────── */
+  startGameBtn.onclick = ()=>{
+    if(!agentName.value.trim()||!agentPersona.value.trim()) return alert("Enter name & persona");
+    setLoading(true);
+    fetch("/start_game",{method:"POST",headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scenario_id:selScenario.value,name:agentName.value,persona:agentPersona.value})})
+    .then(r=>r.json()).then(res=>{
+      sessionId=res.session_id; me=agentName.value.trim();
+      personas = Object.fromEntries(res.agents.map(a=>[a.name,a.persona]));
+      startCard.classList.add("hidden");  gameCard.classList.remove("hidden");
+      scenarioTitle.textContent=res.scenario_title; initialSetup.textContent=res.initial_setup;
+      setLoading(false);
+    }).catch(e=>{alert(e.message); setLoading(false);});
+  };
+
+  submitTurnBtn.onclick = ()=>{
+    if(!userInstruction.value.trim()) return;
+    setLoading(true);
+    fetch("/submit_turn",{method:"POST",headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({session_id:sessionId,instruction:userInstruction.value,agent_name:me})})
+    .then(r=>r.json()).then(res=>{
+      if(res.dialogue_segment) appendDialogue(res.dialogue_segment);
+      userInstruction.value=""; if(res.game_over) endGame(res.outcome_label,res.outcome,res.message); else setLoading(false);
+    }).catch(e=>{endGame(null,null,e.message);});
+  };
+
+  newGameBtn.onclick = reset;
+
+  downloadBtn.onclick = ()=>{
+    fetch("/download",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId})})
+    .then(r=>r.blob()).then(blob=>{
+      const url=URL.createObjectURL(blob), a=document.createElement("a");
+      a.href=url; a.download="simulation.md"; document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(url); a.remove();
     });
+  };
 
-    resetBtn.addEventListener("click", ()=>{
-      resultCard.style.display="none";
-      startCard.style.display="block";
-      agentName.value="";
-      agentPersona.value="";
-      survivorsBox.textContent="";
-      dialogueBox.innerHTML="";
-    });
+  /* Ctrl+Enter shortcut */
+  userInstruction.addEventListener("keydown",e=>{
+    if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) submitTurnBtn.click();
+  });
   </script>
 </body>
 </html>
