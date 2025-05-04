@@ -54,6 +54,10 @@
 
     <!-- ── Game Card ──────────────────────────────────────────────────────── -->
     <div id="game-card" class="bg-white shadow rounded-lg p-6 mt-6 hidden flex flex-col space-y-4">
+      <div id="phase-indicator" class="text-sm font-semibold text-amber-700 mb-2">
+        Phase: Introduction
+      </div>
+
       <div class="flex justify-end space-x-2">
         <button id="download-btn" class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded hidden">
           Download
@@ -100,6 +104,7 @@
   const submitTurnBtn = el("submit-turn-btn"), downloadBtn = el("download-btn");
   const outcomeDiv = document.querySelector(".outcome"), errorDiv = document.querySelector(".error-message");
   const scenarioTitle = el("scenario-title"), initialSetup = el("initial-setup"), gameOverArea = el("game-over-area");
+  const phaseIndicator = el("phase-indicator");
 
   /* ── State ─────────────────────────────────────────────────────────────── */
   let sessionId=null, me=null, personas={};
@@ -165,12 +170,13 @@
     startCard.classList.remove("hidden"); gameCard.classList.add("hidden");
     downloadBtn.classList.add("hidden"); dialogueBox.innerHTML=""; userInstruction.value="";
     gameOverArea.classList.add("hidden"); instructionArea.classList.remove("hidden");
+    phaseIndicator.textContent="Phase: Introduction";
   };
 
   /* ── Page load: fetch scenarios ───────────────────────────────────────── */
   fetch("/scenarios").then(r=>r.json()).then(list=>{
     selScenario.innerHTML=list.map(s=>`<option value="${s.id}">${s.title}</option>`).join("");
-  }).catch(e=>{
+  }).catch(()=>{
     scenarioLoadError.textContent="Could not load scenarios."; scenarioLoadError.classList.remove("hidden");
   });
 
@@ -185,6 +191,7 @@
       personas = Object.fromEntries(res.agents.map(a=>[a.name,a.persona]));
       startCard.classList.add("hidden");  gameCard.classList.remove("hidden");
       scenarioTitle.textContent=res.scenario_title; initialSetup.textContent=res.initial_setup;
+      phaseIndicator.textContent="Phase: Introduction";
       setLoading(false);
     }).catch(e=>{alert(e.message); setLoading(false);});
   };
@@ -194,8 +201,9 @@
     setLoading(true);
     fetch("/submit_turn",{method:"POST",headers:{'Content-Type':'application/json'},
       body:JSON.stringify({session_id:sessionId,instruction:userInstruction.value,agent_name:me})})
-      .then(r=>r.json()).then(res=>{
+    .then(r=>r.json()).then(res=>{
       if(res.dialogue_segment) appendDialogue(res.dialogue_segment);
+      if(res.phase_label) phaseIndicator.textContent="Phase: "+res.phase_label;
       userInstruction.value="";
       if(res.game_over) endGame(res.outcome_label,res.outcome,res.message);
       else setLoading(false);
@@ -220,4 +228,3 @@
   </script>
 </body>
 </html>
-

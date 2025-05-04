@@ -14,94 +14,121 @@ class Agent:
         self.name    = name.strip()
         self.persona = persona.strip()
 
-
 class Room:
-    """Multi‑turn simulation with dialogue history and post‑round twists."""
+    """Four‑phase simulation: intro → decision1 → decision2 → resolution."""
+    PHASE_NAMES = ["Introduction", "First decision", "Second decision", "Resolution"]
+
     def __init__(self, scenario_id: str, agents: list["Agent"]):
-        self.agents   = agents
+        self.agents   = agents                      # alive only
         self.scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
         if not self.scenario:
             raise ValueError(f"Scenario with id {scenario_id} not found.")
 
-        self.dialogue_history = []
-        self.game_over        = False
-        self.outcome          = None        # survivors / released / etc.
-        # copy twists so the global list isn’t mutated
-        self.twists_remaining = self.scenario.get("twists", []).copy()
+        self.dialogue_history: list[str] = []
+        self.twists_remaining           = self.scenario.get("twists", []).copy()
+        random.shuffle(self.twists_remaining)
 
-    # ── prompt builder ────────────────────────────────────────────────────
-    def _build_turn_prompt(
-        self, user_agent_name: str, user_instruction: str
-    ) -> tuple[str, str]:
+        self.phase        = 0            # 0 → 1 → 2 → 3
+        self.game_over    = False
+        self.outcome: list[str] | None = None
+
+        self._rule_prefix = self.scenario["survival_rule"].split(":")[0].split()[-1]
+
+    # ──────────────────────────────────────────────────────────────────────
+    # prompt builder
+    def _build_turn_prompt(self, user_agent: Agent, user_instruction: str) -> tuple[str, str]:
+        phase_name  = self.PHASE_NAMES[self.phase]
+        alive_names = [a.name for a in self.agents]
+
+        # ---------- SYSTEM ----------
+        common = (
+            f"You control **GM** and **all NPCs** (everyone except {user_agent.name}).\n"
+            "Produce **one turn only** in this exact structure:\n"
+            "1. **GM:** narration for the current phase.\n"
+            f"2. **{user_agent.name}:** obeys the director.\n"
+            "3. One line for *each* other living agent (order is up to you).\n\n"
+        )
+        kill_rule = (
+            "At the very end add **one** line:\n"
+            "DEAD: <Name>\n"
+            "The named NPC must be removed from play and never speak again.\n\n"
+        )
+        resolution_rule = (
+            "First let the GM summarise what happened (≤3 lines). "
+            "Then end with **one** line:\n"
+            f"RESOLUTION: {self._rule_prefix}: <comma‑separated survivor names>"
+        )
         system_prompt = (
-            "You control the Game Master **and** all NPCs "
-            f"(everyone except {user_agent_name}).\n"
-            "Produce exactly **one turn** with **max five** lines, "
-            "in *this order*:\n"
-            f"1. **GM:** one narration line.\n"
-            f"2. **{user_agent_name}:** obeys the director’s order.\n"
-            "3. 1‑3 lines from **other agents** who naturally respond.\n\n"
-            f"{self.scenario['survival_rule']}"
+            f"Current phase: **{phase_name}**.\n"
+            + common
+            + (kill_rule if self.phase < 3 else resolution_rule)
         )
 
-        agent_intros = "\n".join(f"- {ag.name}: {ag.persona}" for ag in self.agents)
-        history      = "\n".join(self.dialogue_history) or "*none yet*"
-
+        # ---------- USER ----------
+        cast_md   = "\n".join(f"- {a.name}: {a.persona}" for a in self.agents)
+        history   = "\n".join(self.dialogue_history) or "*none yet*"
         user_prompt = (
             f"### Scenario\n{self.scenario['title']}\n"
             f"### Setup\n{self.scenario['setup']}\n\n"
-            f"### Cast\n{agent_intros}\n\n"
+            f"### Cast (alive)\n{cast_md}\n\n"
             f"### Dialogue so far\n{history}\n\n"
-            f"### Director’s order to {user_agent_name}\n{user_instruction}\n\n"
-            "### Now produce the next turn following the required structure."
+            f"### Director’s order to {user_agent.name}\n{user_instruction}\n\n"
+            "### Produce the next turn now."
         )
         return system_prompt, user_prompt
 
-    # ── single simulation turn ────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────
+    # helpers
+    def _apply_deaths(self, text: str) -> None:
+        m = re.search(r"^DEAD\s*:?\s*(.+)$", text, re.I | re.M)
+        if not m:
+            return
+        dead_names = [n.strip() for n in m.group(1).split(",") if n.strip()]
+        self.agents = [a for a in self.agents if a.name not in dead_names]
+
+    # ──────────────────────────────────────────────────────────────────────
+    # single turn
     def process_turn(self, user_agent_name: str, user_instruction: str) -> dict:
         if self.game_over:
             return {"dialogue_segment": "", "game_over": True, "outcome": self.outcome}
 
-        sys_p, usr_p = self._build_turn_prompt(user_agent_name, user_instruction)
+        user_agent = next(a for a in self.agents if a.name == user_agent_name)
+        sys_p, usr_p = self._build_turn_prompt(user_agent, user_instruction)
         raw = run_script(sys_p, usr_p).strip()
 
-        # guarantee the directed agent appears; retry once if missing
-        if not re.search(rf"^{re.escape(user_agent_name)}:", raw, flags=re.I | re.M):
-            correction = (
-                f"\nThe previous answer lacked a line starting with "
-                f"“{user_agent_name}:”. Please comply with the template."
-            )
-            raw = run_script(sys_p, usr_p + correction).strip()
+        # ensure the user‑controlled agent appears; retry once if missing
+        if not re.search(rf"^{re.escape(user_agent_name)}:", raw, re.I | re.M):
+            raw = run_script(sys_p, usr_p +
+                             f"\n(Previous reply lacked a line for {user_agent_name}.)").strip()
 
         self.dialogue_history.append(raw)
+        self._apply_deaths(raw)
 
-        # ── outcome parsing ───────────────────────────────────────────────
-        rule_prefix = self.scenario["survival_rule"].split(":")[0].split()[-1]
-        label       = f"{rule_prefix}:"
-        survivors, dialogue = [], raw
+        # —— check for RESOLUTION ——
+        res_pat = rf"^RESOLUTION:\s*{self._rule_prefix}\s*:\s*(.+)$"
+        m = re.search(res_pat, raw, re.I | re.M)
+        if m:
+            self.game_over = True
+            self.outcome   = [n.strip() for n in m.group(1).split(",") if n.strip()]
 
-        if label.upper() in raw.upper():                     # outcome reached
-            parts     = re.split(rf"\n{label}", raw, flags=re.IGNORECASE)
-            dialogue  = parts[0].strip()
-            names_raw = (label + parts[1]).strip()
-            survivors = [
-                n.strip() for n in names_raw.split(":", 1)[1].split(",") if n.strip()
-            ]
-            self.game_over, self.outcome = True, survivors
-
-        # ── inject a random twist if the game continues ──────────────────
-        if not self.game_over and self.twists_remaining:
-            twist = random.choice(self.twists_remaining)
-            self.twists_remaining.remove(twist)
+        # —— inject twist for next phase ——
+        if not self.game_over and self.phase < 2 and self.twists_remaining:
+            twist = self.twists_remaining.pop()
             twist_line = f"GM: {twist}"
             self.dialogue_history.append(twist_line)
-            dialogue += "\n" + twist_line
+            raw += "\n" + twist_line
+
+        # advance phase counter
+        if not self.game_over:
+            self.phase += 1
 
         return {
-            "dialogue_segment": dialogue,
+            "dialogue_segment": raw,
+            "phase_label": self.PHASE_NAMES[self.phase if not self.game_over else 3],
             "game_over": self.game_over,
             "outcome": self.outcome,
         }
+
 
 # ──────────────────────────────────────────────────────────────────────────
 #  Routes
