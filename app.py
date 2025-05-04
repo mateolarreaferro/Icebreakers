@@ -1,6 +1,6 @@
 import io, random, uuid, re
 from flask import Flask, render_template, request, jsonify, send_file
-from agents import agent_list
+from npc_agents import agent_list
 from scenarios import scenarios
 from llm_utils import run_script
 
