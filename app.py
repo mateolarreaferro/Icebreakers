@@ -96,35 +96,38 @@ class Room:
         sys_p, usr_p = self._build_turn_prompt(user_agent, user_instruction)
         raw = run_script(sys_p, usr_p).strip()
 
-        # ensure the user‑controlled agent appears; retry once if missing
+        # ensure user‑agent line appears
         if not re.search(rf"^{re.escape(user_agent_name)}:", raw, re.I | re.M):
-            raw = run_script(sys_p, usr_p +
-                             f"\n(Previous reply lacked a line for {user_agent_name}.)").strip()
+            raw = run_script(
+                sys_p, usr_p + f"\n(Previous reply lacked a line for {user_agent_name}.)"
+            ).strip()
 
         self.dialogue_history.append(raw)
         self._apply_deaths(raw)
 
-        # —— check for RESOLUTION ——
-        res_pat = rf"^RESOLUTION:\s*{self._rule_prefix}\s*:\s*(.+)$"
-        m = re.search(res_pat, raw, re.I | re.M)
+        # —— RESOLUTION check (prefix OPTIONAL) ——
+        m = re.search(
+            rf"^RESOLUTION:\s*(?:{self._rule_prefix}\s*:\s*)?(.+)$",
+            raw, re.I | re.M
+        )
         if m:
             self.game_over = True
             self.outcome   = [n.strip() for n in m.group(1).split(",") if n.strip()]
 
-        # —— inject twist for next phase ——
+        # —— twist injection ——
         if not self.game_over and self.phase < 2 and self.twists_remaining:
             twist = self.twists_remaining.pop()
             twist_line = f"GM: {twist}"
             self.dialogue_history.append(twist_line)
             raw += "\n" + twist_line
 
-        # advance phase counter
-        if not self.game_over:
+        # —— phase advance (never beyond index 3) ——
+        if not self.game_over and self.phase < 3:
             self.phase += 1
 
         return {
             "dialogue_segment": raw,
-            "phase_label": self.PHASE_NAMES[self.phase if not self.game_over else 3],
+            "phase_label": self.PHASE_NAMES[min(self.phase, 3)],
             "game_over": self.game_over,
             "outcome": self.outcome,
         }
