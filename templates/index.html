@@ -15,7 +15,8 @@
 
   <style>
     :root{
-      --gm-bg:#fef3c7; --gm-text:#92400e;
+      --gm-bg:#fef3c7;
+      --gm-text:#92400e;
     }
     .bubble{word-break:break-word}
     .gm   .bubble{background:var(--gm-bg);color:var(--gm-text);font-style:italic}
@@ -26,14 +27,20 @@
   <div class="w-full max-w-3xl p-4">
     <h1 class="text-3xl font-bold text-center text-blue-700 mb-6">Multi‑Agent Simulation</h1>
 
-    <!-- ── Start Card ─────────────────────────────────────────────────────── -->
+    <!-- ── Start Card ───────────────────────────────────────────────────── -->
     <div id="start-card" class="bg-white shadow rounded-lg p-6 space-y-4">
       <h2 class="text-xl font-semibold text-blue-700">Start a New Game</h2>
 
       <label class="block">
         <span class="font-medium">Scenario</span>
         <select id="scenario" class="mt-1 w-full border p-2 rounded"></select>
-        <p id="scenario-load-error" class="text-red-500 mt-1 hidden"></p>
+        <p id="scenario-load-error" class="text-red-500 mt-1 hidden">Could not load scenarios.</p>
+      </label>
+
+      <label class="block">
+        <span class="font-medium">Game Master</span>
+        <select id="gm" class="mt-1 w-full border p-2 rounded"></select>
+        <p id="gm-load-error" class="text-red-500 mt-1 hidden">Could not load GMs.</p>
       </label>
 
       <label class="block">
@@ -52,7 +59,7 @@
       </button>
     </div>
 
-    <!-- ── Game Card ──────────────────────────────────────────────────────── -->
+    <!-- ── Game Card ────────────────────────────────────────────────────── -->
     <div id="game-card" class="bg-white shadow rounded-lg p-6 mt-6 hidden flex flex-col space-y-4">
       <div id="phase-indicator" class="text-sm font-semibold text-amber-700 mb-2">
         Phase: Introduction
@@ -69,6 +76,7 @@
 
       <div>
         <h2 id="scenario-title" class="text-xl font-semibold"></h2>
+        <p id="gm-name" class="text-sm italic text-slate-500"></p>
         <p id="initial-setup" class="mt-1"></p>
       </div>
 
@@ -91,11 +99,12 @@
     </div>
   </div>
 
-  <!-- ── Scripts ──────────────────────────────────────────────────────────── -->
+  <!-- ── Scripts ───────────────────────────────────────────────────────── -->
   <script>
-  /* ── Elements ─────────────────────────────────────────────────────────── */
+  /* ── Elements ───────────────────────────────────────────────────────── */
   const el = id => document.getElementById(id);
   const selScenario = el("scenario"),  scenarioLoadError = el("scenario-load-error");
+  const selGM       = el("gm"),        gmLoadError       = el("gm-load-error");
   const startCard   = el("start-card"), gameCard   = el("game-card");
   const agentName   = el("agent-name"), agentPersona = el("agent-persona");
   const dialogueBox = el("dialogue"),   instructionArea = el("instruction-area");
@@ -104,12 +113,12 @@
   const submitTurnBtn = el("submit-turn-btn"), downloadBtn = el("download-btn");
   const outcomeDiv = document.querySelector(".outcome"), errorDiv = document.querySelector(".error-message");
   const scenarioTitle = el("scenario-title"), initialSetup = el("initial-setup"), gameOverArea = el("game-over-area");
-  const phaseIndicator = el("phase-indicator");
+  const phaseIndicator = el("phase-indicator"), gmNameEl = el("gm-name");
 
-  /* ── State ─────────────────────────────────────────────────────────────── */
+  /* ── State ──────────────────────────────────────────────────────────── */
   let sessionId=null, me=null, personas={};
 
-  /* ── Helpers ───────────────────────────────────────────────────────────── */
+  /* ── Helpers ────────────────────────────────────────────────────────── */
   const lineHTML = (speaker,text,side) => `
     <div class="flex ${side==='me'?'justify-end':''} ${side==='gm'?'gm':''}">
       <div class="bubble rounded-xl px-4 py-2 shadow max-w-[70%] ${side==='me'?'bg-blue-600 text-white':''} ${side==='them'?'bg-slate-200':''}">
@@ -173,24 +182,33 @@
     phaseIndicator.textContent="Phase: Introduction";
   };
 
-  /* ── Page load: fetch scenarios ───────────────────────────────────────── */
+  /* ── Page load: fetch scenarios & GMs ───────────────────────────────── */
   fetch("/scenarios").then(r=>r.json()).then(list=>{
     selScenario.innerHTML=list.map(s=>`<option value="${s.id}">${s.title}</option>`).join("");
-  }).catch(()=>{
-    scenarioLoadError.textContent="Could not load scenarios."; scenarioLoadError.classList.remove("hidden");
-  });
+  }).catch(()=>scenarioLoadError.classList.remove("hidden"));
 
-  /* ── Event listeners ──────────────────────────────────────────────────── */
+  fetch("/gms").then(r=>r.json()).then(list=>{
+    selGM.innerHTML=list.map(g=>`<option value="${g.id}">${g.name} (${g.difficulty})</option>`).join("");
+  }).catch(()=>gmLoadError.classList.remove("hidden"));
+
+  /* ── Event listeners ────────────────────────────────────────────────── */
   startGameBtn.onclick = ()=>{
     if(!agentName.value.trim()||!agentPersona.value.trim()) return alert("Enter name & persona");
     setLoading(true);
     fetch("/start_game",{method:"POST",headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({scenario_id:selScenario.value,name:agentName.value,persona:agentPersona.value})})
+      body:JSON.stringify({
+        scenario_id: selScenario.value,
+        gm_id:       selGM.value,
+        name:        agentName.value,
+        persona:     agentPersona.value
+      })})
     .then(r=>r.json()).then(res=>{
       sessionId=res.session_id; me=agentName.value.trim();
       personas = Object.fromEntries(res.agents.map(a=>[a.name,a.persona]));
       startCard.classList.add("hidden");  gameCard.classList.remove("hidden");
-      scenarioTitle.textContent=res.scenario_title; initialSetup.textContent=res.initial_setup;
+      scenarioTitle.textContent=res.scenario_title;
+      gmNameEl.textContent = `GM: ${res.gm_name} (${res.gm_difficulty})`;
+      initialSetup.textContent=res.initial_setup;
       phaseIndicator.textContent="Phase: Introduction";
       setLoading(false);
     }).catch(e=>{alert(e.message); setLoading(false);});

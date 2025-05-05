@@ -6,7 +6,7 @@ from settings import OPENAI_API_KEY
 _oai = OpenAI(api_key=OPENAI_API_KEY)
 
 # ──────────────────────────────────────────────────────────────────────────
-# Core helpers (only what the current codebase needs)
+# CORE
 # ──────────────────────────────────────────────────────────────────────────
 
 def gen_oai(messages, model: str = "gpt-4o", temperature: float = 1.0, max_tokens: int = 1000) -> str:

@@ -1,15 +1,17 @@
 import io, random, uuid, re
 from flask import Flask, render_template, request, jsonify, send_file
+
 from npc_agents import agent_list
-from scenarios import scenarios
-from llm_utils import run_script
-from room import Agent, Room 
+from scenarios   import scenarios
+from gm_profiles import gm_list          # NEW
+from llm_utils   import run_script
+from room        import Agent, Room
 
 app = Flask(__name__)
 
-# ──────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────
 #  Routes
-# ──────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────
 game_sessions: dict[str, Room] = {}
 
 @app.route("/")
@@ -20,41 +22,46 @@ def index():
 def list_scenarios():
     return jsonify([{k: s[k] for k in ("id", "title")} for s in scenarios])
 
+@app.route("/gms")
+def list_gms():
+    return jsonify([{k: g[k] for k in ("id", "name", "difficulty")} for g in gm_list])
+
 @app.route("/start_game", methods=["POST"])
 def start_game():
     data          = request.json
     scenario_id   = data.get("scenario_id")
+    gm_id         = data.get("gm_id")              # NEW
     user_name     = data.get("name")
     user_persona  = data.get("persona")
 
-    if not all([scenario_id, user_name, user_persona]):
-        return jsonify({"error": "Missing scenario, name, or persona"}), 400
+    if not all([scenario_id, gm_id, user_name, user_persona]):
+        return jsonify({"error": "Missing scenario, GM, name, or persona"}), 400
 
     scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
-    if not scenario:
-        return jsonify({"error": f"Scenario '{scenario_id}' not found"}), 404
+    gm       = next((g for g in gm_list   if g["id"] == gm_id), None)
+    if not scenario or not gm:
+        return jsonify({"error": "Invalid scenario_id or gm_id"}), 404
 
     # build cast
     user_agent    = Agent(user_name, user_persona)
     npcs          = [a for a in agent_list if a["name"].lower() != user_name.lower()]
     random.shuffle(npcs)
-    max_total     = scenario.get("max_agents", 8)
-    npc_count     = max_total - 1
+    npc_count     = scenario.get("max_agents", 8) - 1
     npcs_for_room = [Agent(a["name"], a["persona"]) for a in npcs[:npc_count]]
     all_agents    = [user_agent] + npcs_for_room
 
-    room = Room(scenario_id, all_agents)
+    room = Room(scenario_id, all_agents, gm)       # pass GM
     session_id = str(uuid.uuid4())
     game_sessions[session_id] = room
 
-    return jsonify(
-        {
-            "session_id": session_id,
-            "scenario_title": room.scenario["title"],
-            "initial_setup": room.scenario["setup"],
-            "agents": [{"name": a.name, "persona": a.persona} for a in all_agents],
-        }
-    )
+    return jsonify({
+        "session_id":     session_id,
+        "scenario_title": room.scenario["title"],
+        "initial_setup":  room.scenario["setup"],
+        "gm_name":        gm["name"],
+        "gm_difficulty":  gm["difficulty"],
+        "agents":         [{"name": a.name, "persona": a.persona} for a in all_agents],
+    })
 
 @app.route("/submit_turn", methods=["POST"])
 def submit_turn():
@@ -88,6 +95,7 @@ def download():
 
     md = (
         f"# {room.scenario['title']}\n\n"
+        f"## GM: {room.gm['name']} ({room.gm['difficulty']})\n\n"
         f"## Setup\n{room.scenario['setup']}\n\n"
         "## Dialogue\n" + "\n\n".join(room.dialogue_history)
     )
