@@ -1,3 +1,4 @@
+import Link from 'next/link';
 
 export default function Chat({ Name, players }) {
     return (
@@ -23,9 +24,13 @@ export default function Chat({ Name, players }) {
         <p> Active players: {players} </p>
         </div>
 
-        <button id="start-game-btn" className="w-full bg-violet-400 hover:bg-violet-400 text-white py-2 rounded">
-          Join Game
-        </button>
+        { /* Version 1: redirect to single-player page */ }
+        <Link href="../gamePage">
+            <button id="start-game-btn" className="w-full bg-violet-400 hover:bg-violet-400 text-white py-2 rounded">
+            Join Game
+            </button>
+        </Link>
+
       </div>
       </div>
     );
