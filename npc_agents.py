@@ -1,3 +1,4 @@
+# these are the NPCs - we need to decide whether we will use them or not!
 agent_list = [
   {
     "name": "Chávez",

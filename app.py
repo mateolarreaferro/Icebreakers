@@ -3,29 +3,33 @@ from flask import Flask, render_template, request, jsonify, send_file
 
 from npc_agents import agent_list
 from scenarios   import scenarios
-from gm_profiles import gm_list          # NEW
+from gm_profiles import gm_list  
 from llm_utils   import run_script
 from room        import Agent, Room
 
 app = Flask(__name__)
 
-# ───────────────────────────────────────────────────────────
+
 #  Routes
-# ───────────────────────────────────────────────────────────
 game_sessions: dict[str, Room] = {}
 
+# Displays index.html
 @app.route("/")
 def index():
     return render_template("index.html")
 
+# Resturns JSON list of scenarios - used to populate the scenario dropdown in the frontend
 @app.route("/scenarios")
 def list_scenarios():
     return jsonify([{k: s[k] for k in ("id", "title")} for s in scenarios])
 
+# Returns JSON list of game masters (with difficulty level) - for frontend too
 @app.route("/gms")
 def list_gms():
     return jsonify([{k: g[k] for k in ("id", "name", "difficulty")} for g in gm_list])
 
+# Initialized game session. Receives scenario ID, GameMaster ID, player name + persona from frontend
+# Validates Inputs, Finds Selected Scenario and GM, builds the 'cast', creates room object, stores room in memory (with unique sesion id)
 @app.route("/start_game", methods=["POST"])
 def start_game():
     data          = request.json
@@ -63,6 +67,11 @@ def start_game():
         "agents":         [{"name": a.name, "persona": a.persona} for a in all_agents],
     })
 
+
+# processes a single turn of the game (main loop of interaction)
+# receives session iD, agent name, and user interaction from frontend + retrieves matching room from game_sessions
+# builds a prompt, sends to gpt, parses response, advances the phase, add outcome (if game ends)
+# returns full turn result as json
 @app.route("/submit_turn", methods=["POST"])
 def submit_turn():
     data            = request.json
@@ -87,6 +96,7 @@ def submit_turn():
         result["outcome_label"] = lbl
     return jsonify(result)
 
+# creates downloadable markdown of the dialogue/sim
 @app.route("/download", methods=["POST"])
 def download():
     room = game_sessions.get(request.json.get("session_id"))

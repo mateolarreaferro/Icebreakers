@@ -4,22 +4,20 @@ import random, re
 from scenarios   import scenarios
 from llm_utils   import run_script
 
-# ───────────────────────────────────────────────────────────
+
 # Agent
-# ───────────────────────────────────────────────────────────
 class Agent:
     def __init__(self, name: str, persona: str):
         self.name    = name.strip()
         self.persona = persona.strip()
 
-# ───────────────────────────────────────────────────────────
 # Room
-# ───────────────────────────────────────────────────────────
 class Room:
     PHASE_NAMES = ["Introduction", "First decision", "Second decision", "Resolution"]
 
     _DIFF_TEMP = {"easy": 0.3, "normal": 0.6, "hard": 1}
 
+    # initializes single agents (user and npcs)
     def __init__(self, scenario_id: str, agents: list[Agent], gm: dict):
         self.agents   = agents
         self.gm       = gm                    # NEW
@@ -37,9 +35,8 @@ class Room:
 
         self._rule_prefix = self.scenario["survival_rule"].split(":")[0].split()[-1]
 
-    # ───────────────────────────────────────────────────────
-    # prompt builder
-    # ───────────────────────────────────────────────────────
+    # prompt builder -- Constructs the system and user prompts to send to GPT for the current turn.
+    # A Returns: 2-tuple of (system_prompt, user_prompt) to pass to GPT.
     def _build_turn_prompt(self, user_agent: Agent, user_instruction: str):
         phase_name = self.PHASE_NAMES[self.phase]
 
@@ -85,9 +82,7 @@ class Room:
         )
         return system_prompt, user_prompt
 
-    # ───────────────────────────────────────────────────────
-    # helpers
-    # ───────────────────────────────────────────────────────
+    # helpers -- Parses the GPT response for a DEAD: line and removes those agents from the active agent list.
     def _apply_deaths(self, text: str):
         m = re.search(r"^DEAD\s*:?\s*(.+)$", text, re.I | re.M)
         if not m:
@@ -95,9 +90,7 @@ class Room:
         dead_names = [n.strip() for n in m.group(1).split(",") if n.strip()]
         self.agents = [a for a in self.agents if a.name not in dead_names]
 
-    # ───────────────────────────────────────────────────────
-    # single turn
-    # ───────────────────────────────────────────────────────
+    # single turn - game loop (player submits direction, LLM generates full dialogue, simulation state updates)
     def process_turn(self, user_agent_name: str, user_instruction: str):
         if self.game_over:
             return {"dialogue_segment": "", "game_over": True, "outcome": self.outcome}
