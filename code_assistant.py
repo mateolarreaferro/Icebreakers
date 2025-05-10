@@ -1,5 +1,7 @@
-# Code Assistant - it will clarify anything about the codebase - helpful as we start integrating more parts
+# Code Assistant - 'Read‑Eval‑Print Loop' it will clarify anything about the codebase - helpful as we start integrating more parts
 # feel free to adjust it as you wish
+# inspired by: https://github.com/Aider-AI/aider
+# type "chao" to exit when running on the terminal
 """
 Interactive GPT-powered code assistant
 
