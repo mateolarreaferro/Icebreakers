@@ -1,0 +1,70 @@
+(lc-academy-env) maohuijun@DN0a1e88bb Narrative-GABM % python3 demo.py
+
+Welcome to the Roleplaying Scenario Setup!
+Please enter the following details:
+1) Name for Player 1: Mao
+2) Personality for Player 1: You are a Stanford Master student studying literature.
+3) Name for Player 2: Liu
+4) Personality for Player 2: You are an psychopath who loves the sense of killing.
+
+=== Received Input ===
+Player 1: Mao (You are a Stanford Master student studying literature.)
+Player 2: Liu (You are an psychopath who loves the sense of killing.)
+
+=== Game Start ===
+Scenario: In the dimly lit corridor of the Nostromo, your crewmate Kane lies motionless, his chest torn open from the inside, blood still pooling beneath him. The thing that burst from him—a xenomorph—is gone, lurking somewhere on this ship. The crew is panicked, debating what to do: hunt it down, ignore it and continue with original tasks, or abandon ship—drip, drip, drip—Kane's blood is still fresh, and time is running out. 
+    
+
+=== Round 1 ===
+5) Player1, please enter instructions to direct your agent: You are panicking and don't know what to do.
+6) Player2, please enter instructions to direct your agent: You want to hunt down the xenomorph.
+
+=== Received Instructions ===
+
+=== Waiting for agents to respond ===
+Mao: Oh god... oh god, this can’t be happening, not like in the stories, this isn’t supposed to be real—what do we do, what do we do? We can’t hunt it, we can’t just sit here—somebody do something!
+Liu: Look at all this beautiful chaos, Mao. Hiding won't save us. But hunting it? That's art. Let’s go find our guest and see what it’s like to face death, up close. Don’t you want to see what it can do?
+GM: The corridor hums with tension. The lights flicker overhead, casting monstrous shadows along the metal walls. Your indecision hangs heavy in the air, but Liu’s manic excitement cuts through the panic. Suddenly, you hear something skittering in the ventilation above—a flash of movement, and then silence except for your own ragged breathing. The ship’s intercom crackles, briefly illuminating a maintenance map; you realize the vents run everywhere, offering the thing countless places to hide. The smell of Kane’s blood grows sharper. Time is slipping away. What do you do: follow Liu’s proposal to hunt the xenomorph using whatever tools are at hand, barricade yourself and hope for rescue, or try to escape in one of the lifeboats?
+
+=== Round 2 ===
+5) Player1, please enter instructions to direct your agent: You decide to follow Liu, but you demand that Liu has to lead the way
+6) Player2, please enter instructions to direct your agent: You pick up your machine gun and dash towards the direction the xenomorph has disappeared
+
+=== Received Instructions ===
+
+=== Waiting for agents to respond ===
+Mao: Fine! Fine, we’ll hunt it, but you’re going first, Liu—I’m not dying in some horror story cliché because I was too brave for my own good. You wanted this, so lead the way. And—and watch the vents.
+Liu: Hah! You’re cute when you’re scared. Stay close if you want to live, Mao—let’s see if our guest likes bullets. I’ll flush it out; you just try not to scream too loud.
+GM: Liu charges ahead, machine gun pressed to his shoulder, boots thudding against the gridded floor. Mao, you trail close behind, nerves jangled and eyes darting to every flickering shadow. The corridor narrows toward engineering—a tangle of pipes and hissing steam obscures the view. Suddenly, a drip of blood splashes beside you from an overhead vent. Something metallic rattles in the dark above, then stillness. The ship’s lights stutter, plunging you briefly into blackness. When they return, faint chittering echoes off the walls, moving deeper into the labyrinthine bowels of the Nostromo. Your hunt has begun, but the thing knows these passages better than any human. Do you press forward or plan a trap?
+
+=== Round 3 ===
+5) Player1, please enter instructions to direct your agent: You don't want to make any decision and just follow Liu passively
+6) Player2, please enter instructions to direct your agent: You are excited and dash forward
+
+=== Received Instructions ===
+
+=== Waiting for agents to respond ===
+Mao: Liu—wait, wait, slow down—just, just breathe, okay? I’m right behind you, I’m not arguing, just—watch those corners… oh god, this place is a tomb. Just keep going, I’ll cover you, if I can…
+Liu: That’s the spirit, Mao! Stay right on my heels and don’t flinch. If you see anything move, shout—or don’t, doesn’t matter, I’ll hear the fear. Come on, let’s see what this thing’s insides look like when I rip it out of the vents!
+GM: You shove forward into the sweltering tangle of piping, Liu leading with his machine gun sweeping back and forth, Mao following so close you can nearly feel each other's breath. Steam hisses in bursts from a ruptured line overhead, clouding vision, and every clang or drip sounds like the creature creeping just out of sight. Suddenly, the radio on your belts sputters—then a shrill, inhuman shriek echoes from somewhere ahead, reverberating through the ductwork. Liu, your nerves thrill at the sound; Mao, your knees nearly buckle with dread. Then, from the corner of your vision, something black darts between shadows. A wrench clatters off metal, dislodged from above. You realize: the xenomorph is circling you in the maze of engineering, using the vents as its hunting ground.
+
+Lights go out, plunging you into utter darkness. Your ears ring with the sudden absence of sound—and then, softly, dripping, the echo of movement behind you. What will you do: hunker down and try to back to back in the darkness, or attempt to flush the xenomorph out by firing blindly into the shadows, risking ricochets and sudden attack? The next move must be swift—your lives hang in the balance.
+
+=== Game Over ===
+Thank you for playing!
+Here is the whole dialogue!
+
+Scenario:
+    In the dimly lit corridor of the Nostromo, your crewmate Kane lies motionless, his chest torn open from the inside, blood still pooling beneath him. The thing that burst from him—a xenomorph—is gone, lurking somewhere on this ship. The crew is panicked, debating what to do: hunt it down, ignore it and continue with original tasks, or abandon ship—drip, drip, drip—Kane's blood is still fresh, and time is running out.
+    Mao: Oh god... oh god, this can’t be happening, not like in the stories, this isn’t supposed to be real—what do we do, what do we do? We can’t hunt it, we can’t just sit here—somebody do something!
+Liu: Look at all this beautiful chaos, Mao. Hiding won't save us. But hunting it? That's art. Let’s go find our guest and see what it’s like to face death, up close. Don’t you want to see what it can do?
+GM: The corridor hums with tension. The lights flicker overhead, casting monstrous shadows along the metal walls. Your indecision hangs heavy in the air, but Liu’s manic excitement cuts through the panic. Suddenly, you hear something skittering in the ventilation above—a flash of movement, and then silence except for your own ragged breathing. The ship’s intercom crackles, briefly illuminating a maintenance map; you realize the vents run everywhere, offering the thing countless places to hide. The smell of Kane’s blood grows sharper. Time is slipping away. What do you do: follow Liu’s proposal to hunt the xenomorph using whatever tools are at hand, barricade yourself and hope for rescue, or try to escape in one of the lifeboats?
+Mao: Fine! Fine, we’ll hunt it, but you’re going first, Liu—I’m not dying in some horror story cliché because I was too brave for my own good. You wanted this, so lead the way. And—and watch the vents.
+Liu: Hah! You’re cute when you’re scared. Stay close if you want to live, Mao—let’s see if our guest likes bullets. I’ll flush it out; you just try not to scream too loud.
+GM: Liu charges ahead, machine gun pressed to his shoulder, boots thudding against the gridded floor. Mao, you trail close behind, nerves jangled and eyes darting to every flickering shadow. The corridor narrows toward engineering—a tangle of pipes and hissing steam obscures the view. Suddenly, a drip of blood splashes beside you from an overhead vent. Something metallic rattles in the dark above, then stillness. The ship’s lights stutter, plunging you briefly into blackness. When they return, faint chittering echoes off the walls, moving deeper into the labyrinthine bowels of the Nostromo. Your hunt has begun, but the thing knows these passages better than any human. Do you press forward or plan a trap?
+Mao: Liu—wait, wait, slow down—just, just breathe, okay? I’m right behind you, I’m not arguing, just—watch those corners… oh god, this place is a tomb. Just keep going, I’ll cover you, if I can…
+Liu: That’s the spirit, Mao! Stay right on my heels and don’t flinch. If you see anything move, shout—or don’t, doesn’t matter, I’ll hear the fear. Come on, let’s see what this thing’s insides look like when I rip it out of the vents!
+GM: You shove forward into the sweltering tangle of piping, Liu leading with his machine gun sweeping back and forth, Mao following so close you can nearly feel each other's breath. Steam hisses in bursts from a ruptured line overhead, clouding vision, and every clang or drip sounds like the creature creeping just out of sight. Suddenly, the radio on your belts sputters—then a shrill, inhuman shriek echoes from somewhere ahead, reverberating through the ductwork. Liu, your nerves thrill at the sound; Mao, your knees nearly buckle with dread. Then, from the corner of your vision, something black darts between shadows. A wrench clatters off metal, dislodged from above. You realize: the xenomorph is circling you in the maze of engineering, using the vents as its hunting ground.
+
+Lights go out, plunging you into utter darkness. Your ears ring with the sudden absence of sound—and then, softly, dripping, the echo of movement behind you. What will you do: hunker down and try to back to back in the darkness, or attempt to flush the xenomorph out by firing blindly into the shadows, risking ricochets and sudden attack? The next move must be swift—your lives hang in the balance.
+
