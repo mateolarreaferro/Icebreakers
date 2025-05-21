@@ -1,1 +1,4 @@
 settings.py
+__pycache__/*
+.env.local
+sims/.env.local
