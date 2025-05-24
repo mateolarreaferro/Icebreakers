@@ -10,9 +10,14 @@ relevant source files, starts a REPL, and preserves conversation history so you
 can ask follow-up questions. Type `chao` to exit.
 """
 import argparse
-import readline 
 from pathlib import Path
 from llm_utils import run_script, gen_oai
+
+try:
+    import readline
+except ImportError:
+    import pyreadline3 as readline
+
 
 # List of project files to include in context (team, fell free to add)
 SOURCE_FILES = [
