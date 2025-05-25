@@ -4,10 +4,10 @@ from flask import Flask, render_template, request, jsonify, send_file
 from storage import upsert_profile, get_profile
 from memory_manager import add_memory, relevant
 from npc_agents import agent_list
-from scenarios   import scenarios
+from scenarios import scenarios
 from gm_profiles import gm_list  
-from llm_utils   import run_script
-from room        import Agent, Room
+from llm_utils import run_script
+from room import Agent, Room
 
 app = Flask(__name__)
 
@@ -36,7 +36,7 @@ def list_gms():
 def start_game():
     data          = request.json
     scenario_id   = data.get("scenario_id")
-    gm_id         = data.get("gm_id")              # NEW
+    gm_id         = data.get("gm_id")  
     user_name     = data.get("name")
     user_persona  = data.get("persona")
 

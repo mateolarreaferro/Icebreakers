@@ -4,7 +4,7 @@ import random, re
 
 from scenarios        import scenarios
 from llm_utils        import run_script
-from storage          import get_profie
+from storage          import get_profile
 from memory_manager   import relevant
 
 
