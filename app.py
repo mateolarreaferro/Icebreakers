@@ -1,6 +1,8 @@
 import io, random, uuid, re
 from flask import Flask, render_template, request, jsonify, send_file
 
+from storage import upsert_profile, get_profile
+from memory_manager import add_memory, relevant
 from npc_agents import agent_list
 from scenarios   import scenarios
 from gm_profiles import gm_list  
@@ -95,6 +97,42 @@ def submit_turn():
         }.get(room.scenario["id"], "Outcome")
         result["outcome_label"] = lbl
     return jsonify(result)
+
+
+# Profiles
+@app.post("/profile")
+def create_profile():
+    data = request.json
+    required = ("name", "persona")
+    if not all(data.get(k, "").strip() for k in required):
+        return jsonify({"error": "name and persona required"}), 400
+    profile = {
+        "name" : data["name"].strip(),
+        "persona": data["persona"].strip(),
+        "home": data.get("home", "").strip(),
+        "hobbies": data.get("hobbies", "").strip(),
+        "fun_fact" : data.get("fun_fact", "").strip(),
+        "personality": data.get("personality", "").strip(),
+    }
+    upsert_profile(profile)
+    return jsonify({"ok": True})
+
+@app.get("/profile/<name>")
+def read_profile(name):
+    p = get_profile(name)
+    if not p: return jsonify({"error": "not found"}), 404
+    return jsonify(p)
+
+# Memories
+@app.post("/memory")
+def add_mem():
+    data = request.json
+    if not all(data.get(k) for k in ("name", "text")):
+        return jsonify({"error": "name & text required"}), 400
+    add_memory(data["name"], data["text"])
+    return jsonify({"ok": True})
+
+
 
 # creates downloadable markdown of the dialogue/sim
 @app.route("/download", methods=["POST"])

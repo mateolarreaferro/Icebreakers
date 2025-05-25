@@ -1,27 +1,29 @@
 # room.py
 from __future__ import annotations
 import random, re
-from scenarios   import scenarios
-from llm_utils   import run_script
+
+from scenarios        import scenarios
+from llm_utils        import run_script
+from storage          import get_profie
+from memory_manager   import relevant
 
 
-# Agent
 class Agent:
-    def __init__(self, name: str, persona: str):
+    """Name + persona; `meta` may hold home, hobbies, etc."""
+    def __init__(self, name: str, persona: str, **meta):
         self.name    = name.strip()
         self.persona = persona.strip()
+        self.meta    = meta
 
-# Room
+
 class Room:
     PHASE_NAMES = ["Introduction", "First decision", "Second decision", "Resolution"]
+    _DIFF_TEMP  = {"easy": 0.3, "normal": 0.6, "hard": 1.0}
 
-    _DIFF_TEMP = {"easy": 0.3, "normal": 0.6, "hard": 1}
-
-    # initializes single agents (user and npcs)
     def __init__(self, scenario_id: str, agents: list[Agent], gm: dict):
-        self.agents   = agents
-        self.gm       = gm                    # NEW
-        self.scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
+        self.agents     = agents
+        self.gm         = gm
+        self.scenario   = next((s for s in scenarios if s["id"] == scenario_id), None)
         if not self.scenario:
             raise ValueError(f"Scenario with id {scenario_id} not found.")
 
@@ -35,16 +37,15 @@ class Room:
 
         self._rule_prefix = self.scenario["survival_rule"].split(":")[0].split()[-1]
 
-    # prompt builder -- Constructs the system and user prompts to send to GPT for the current turn.
-    # A Returns: 2-tuple of (system_prompt, user_prompt) to pass to GPT.
+    # prompt builder
     def _build_turn_prompt(self, user_agent: Agent, user_instruction: str):
         phase_name = self.PHASE_NAMES[self.phase]
 
+        # GM header & common rules
         gm_header = (
             f"### GM persona\n{self.gm['persona']}\n\n"
             f"### GM difficulty\n{self.gm['difficulty']}\n\n"
         )
-
         common_rules = (
             f"You control **GM** and **all NPCs** (everyone except {user_agent.name}).\n"
             "Produce **one turn only** in this exact structure:\n"
@@ -53,13 +54,13 @@ class Room:
             "3. One line for *each* other living agent (order up to you).\n\n"
         )
         format_rule = (
-            "➤ **FORMAT STRICTLY**: each dialogue line must be `Speaker: dialogue` —"
-            " no markdown, bullets, or extra prefixes.\n\n"
+            "➤ **FORMAT STRICTLY**: each dialogue line must be `Speaker: dialogue` — "
+            "no markdown, bullets, or extra prefixes.\n\n"
         )
         kill_rule = "End this turn with one line:\nDEAD: <Name>\n\n"
         resolution_rule = (
             "First the GM summarises (≤3 lines). Then end with one line:\n"
-            f"RESOLUTION: {self._rule_prefix}: <comma‑separated survivor names>"
+            f"RESOLUTION: {self._rule_prefix}: <comma-separated survivor names>"
         )
 
         system_prompt = (
@@ -70,27 +71,44 @@ class Room:
             + (kill_rule if self.phase < 3 else resolution_rule)
         )
 
+        # bio & memories - profile integraton (test)
+        bio  = get_profile(user_agent.name) or {}
+        bio_lines = [
+            f"- Home: {bio.get('home')}" if bio.get("home") else "",
+            f"- Hobbies: {bio.get('hobbies')}" if bio.get("hobbies") else "",
+            f"- Fun fact: {bio.get('fun_fact')}" if bio.get("fun_fact") else "",
+            f"- Personality: {bio.get('personality')}" if bio.get("personality") else "",
+        ]
+        bio_block = "\n".join(l for l in bio_lines if l) or "*none*"
+
+        mems = relevant(user_agent.name, user_instruction)
+        mem_block = "\n".join(f"- {m}" for m in mems) or "*none*"
+
+        # cast & history (we need to change here for story context)
         cast_md = "\n".join(f"- {a.name}: {a.persona}" for a in self.agents)
         history = "\n".join(self.dialogue_history) or "*none yet*"
+
         user_prompt = (
             f"### Scenario\n{self.scenario['title']}\n"
             f"### Setup\n{self.scenario['setup']}\n\n"
             f"### Cast (alive)\n{cast_md}\n\n"
+            f"### {user_agent.name} bio\n{bio_block}\n\n"
+            f"### {user_agent.name} memories (top-of-mind)\n{mem_block}\n\n"
             f"### Dialogue so far\n{history}\n\n"
             f"### Director’s order to {user_agent.name}\n{user_instruction}\n\n"
             "### Produce the next turn now."
         )
         return system_prompt, user_prompt
 
-    # helpers -- Parses the GPT response for a DEAD: line and removes those agents from the active agent list.
+    #  helpers 
     def _apply_deaths(self, text: str):
         m = re.search(r"^DEAD\s*:?\s*(.+)$", text, re.I | re.M)
         if not m:
             return
-        dead_names = [n.strip() for n in m.group(1).split(",") if n.strip()]
-        self.agents = [a for a in self.agents if a.name not in dead_names]
+        dead = [n.strip() for n in m.group(1).split(",") if n.strip()]
+        self.agents = [a for a in self.agents if a.name not in dead]
 
-    # single turn - game loop (player submits direction, LLM generates full dialogue, simulation state updates)
+    #  main loop
     def process_turn(self, user_agent_name: str, user_instruction: str):
         if self.game_over:
             return {"dialogue_segment": "", "game_over": True, "outcome": self.outcome}
@@ -102,30 +120,26 @@ class Room:
 
         raw = run_script(sys_p, usr_p, temperature=temp).strip()
 
-        # retry once if user‑agent didn't speak
-        if not re.search(rf"^{re.escape(user_agent_name)}:", raw, re.I | re.M):
+        # retry once if user-agent didn't speak
+        if not re.search(rf"^{re.escape(user_agent.name)}:", raw, re.I | re.M):
             raw = run_script(
                 sys_p,
-                usr_p + f"\n(Previous reply lacked a line for {user_agent_name}.)",
+                usr_p + f"\n(Previous reply lacked a line for {user_agent.name}.)",
                 temperature=temp,
             ).strip()
 
         self.dialogue_history.append(raw)
         self._apply_deaths(raw)
 
-        m = re.search(
-            rf"^RESOLUTION:\s*(?:{self._rule_prefix}\s*:\s*)?(.+)$",
-            raw,
-            re.I | re.M,
-        )
+        m = re.search(rf"^RESOLUTION:\s*(?:{self._rule_prefix}\s*:\s*)?(.+)$", raw, re.I | re.M)
         if m:
             self.game_over = True
-            self.outcome = [n.strip() for n in m.group(1).split(",") if n.strip()]
+            self.outcome   = [n.strip() for n in m.group(1).split(",") if n.strip()]
 
         if not self.game_over and self.phase < 2 and self.twists_remaining:
-            twist_line = f"GM: {self.twists_remaining.pop()}"
-            self.dialogue_history.append(twist_line)
-            raw += "\n" + twist_line
+            twist = f"GM: {self.twists_remaining.pop()}"
+            self.dialogue_history.append(twist)
+            raw += "\n" + twist
 
         if not self.game_over and self.phase < 3:
             self.phase += 1
@@ -134,5 +148,5 @@ class Room:
             "dialogue_segment": raw,
             "phase_label": self.PHASE_NAMES[min(self.phase, 3)],
             "game_over": self.game_over,
-            "outcome": self.outcome,
+            "outcome" : self.outcome,
         }
