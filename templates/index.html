@@ -5,43 +5,37 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>StoryLine</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Popper + Tippy (tooltips) -->
   <script src="https://unpkg.com/@popperjs/core@2"></script>
   <script src="https://unpkg.com/tippy.js@6"></script>
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css"/>
 
   <style>
-    :root{
-      --gm-bg:#fef3c7;
-      --gm-text:#92400e;
-    }
+    :root{--gm-bg:#fef3c7;--gm-text:#92400e}
     .bubble{word-break:break-word}
-    .gm   .bubble{background:var(--gm-bg);color:var(--gm-text);font-style:italic}
-    .gm   .speaker{color:var(--gm-text)}
+    .gm .bubble{background:var(--gm-bg);color:var(--gm-text);font-style:italic}
+    .gm .speaker{color:var(--gm-text)}
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-700 flex flex-col items-center">
   <div class="w-full max-w-3xl p-4">
     <h1 class="text-3xl font-bold text-center text-blue-700 mb-6">StoryLine</h1>
 
-    <!-- PROFILE CREATOR ----------------------------------------------------->
+    <!-- profile creator -->
     <div id="profile-card" class="bg-white shadow rounded-lg p-6 space-y-3">
       <h2 class="text-xl font-semibold text-blue-700">Create / Edit Your Agent</h2>
-      <input  id="p-name"       class="w-full border p-2 rounded" placeholder="Name">
-      <textarea id="p-persona"  class="w-full border p-2 rounded h-24" placeholder="Persona description"></textarea>
-      <input  id="p-home"       class="w-full border p-2 rounded" placeholder="Where's home (optional)">
-      <input  id="p-hobbies"    class="w-full border p-2 rounded" placeholder="Hobbies (optional)">
-      <input  id="p-fun"        class="w-full border p-2 rounded" placeholder="Fun fact (optional)">
-      <input  id="p-type"       class="w-full border p-2 rounded" placeholder="Personality type (optional)">
+      <input  id="p-name"      class="w-full border p-2 rounded" placeholder="Name">
+      <textarea id="p-persona" class="w-full border p-2 rounded h-24" placeholder="Persona description"></textarea>
+      <input  id="p-home"      class="w-full border p-2 rounded" placeholder="Where's home (optional)">
+      <input  id="p-hobbies"   class="w-full border p-2 rounded" placeholder="Hobbies (optional)">
+      <input  id="p-fun"       class="w-full border p-2 rounded" placeholder="Fun fact (optional)">
+      <input  id="p-type"      class="w-full border p-2 rounded" placeholder="Personality type (optional)">
       <button id="save-profile" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded">
         Save profile
       </button>
     </div>
 
-    <!-- QUICK MEMORY ADD ---------------------------------------------------->
+    <!-- memory add -->
     <div id="memory-card" class="bg-white shadow rounded-lg p-6 mt-6 space-y-3">
       <h2 class="text-xl font-semibold text-blue-700">Add a Memory</h2>
       <input id="m-text" class="w-full border p-2 rounded" placeholder="E.g. I once backpacked across Peru…">
@@ -50,7 +44,7 @@
       </button>
     </div>
 
-    <!-- START GAME ---------------------------------------------------------->
+    <!-- start game -->
     <div id="start-card" class="bg-white shadow rounded-lg p-6 space-y-4 mt-6">
       <h2 class="text-xl font-semibold text-blue-700">Start a New Game</h2>
 
@@ -67,26 +61,26 @@
       </label>
 
       <label class="block">
-        <span class="font-medium">Your agent’s name</span>
-        <input id="agent-name" type="text" class="mt-1 w-full border p-2 rounded"/>
+        <span class="font-medium">Agent profile</span>
+        <select id="profile" class="mt-1 w-full border p-2 rounded">
+          <option value="">— custom —</option>
+        </select>
       </label>
 
-      <label class="block">
-        <span class="font-medium">Your agent’s persona</span>
-        <textarea id="agent-persona" class="mt-1 w-full border p-2 rounded h-24"
-                  placeholder="a Master's student at Stanford University who…"></textarea>
-      </label>
+      <div id="custom-agent-fields" class="space-y-2">
+        <input id="agent-name" type="text" class="w-full border p-2 rounded" placeholder="Name"/>
+        <textarea id="agent-persona" class="w-full border p-2 rounded h-24"
+                  placeholder="Persona description"></textarea>
+      </div>
 
       <button id="start-game-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">
         Start Game
       </button>
     </div>
 
-    <!-- GAME CARD ---------------------------------------------------------->
+    <!-- game card -->
     <div id="game-card" class="bg-white shadow rounded-lg p-6 mt-6 hidden flex flex-col space-y-4">
-      <div id="phase-indicator" class="text-sm font-semibold text-amber-700 mb-2">
-        Phase: Introduction
-      </div>
+      <div id="phase-indicator" class="text-sm font-semibold text-amber-700 mb-2">Phase: Introduction</div>
 
       <div class="flex justify-end space-x-2">
         <button id="download-btn" class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded hidden">
@@ -122,180 +116,176 @@
     </div>
   </div>
 
-  <!-- SCRIPTS -------------------------------------------------------------->
+  <!-- scripts -->
   <script>
-  /* helpers -------------------------------------------------------------*/
-  const el = id => document.getElementById(id);
+  const el=id=>document.getElementById(id)
 
-  /* PROFILE -----------------------*/
-  el("save-profile").onclick = ()=>{
-    const body = {
-      name       : el("p-name").value.trim(),
-      persona    : el("p-persona").value.trim(),
-      home       : el("p-home").value.trim(),
-      hobbies    : el("p-hobbies").value.trim(),
-      fun_fact   : el("p-fun").value.trim(),
-      personality: el("p-type").value.trim()
-    };
-    if(!body.name || !body.persona) return alert("Name & persona required");
+  // profile save
+  el("save-profile").onclick=()=>{
+    const body={
+      name:el("p-name").value.trim(),
+      persona:el("p-persona").value.trim(),
+      home:el("p-home").value.trim(),
+      hobbies:el("p-hobbies").value.trim(),
+      fun_fact:el("p-fun").value.trim(),
+      personality:el("p-type").value.trim()
+    }
+    if(!body.name||!body.persona) return alert("name & persona required")
     fetch("/profile",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-      .then(r=>r.json()).then(j=>alert(j.ok?"Profile saved!":j.error||"Error"));
-  };
+      .then(r=>r.json()).then(j=>alert(j.ok?"profile saved!":j.error||"error"))
+  }
 
-  el("save-mem").onclick = ()=>{
-    const who  = el("p-name").value.trim();
-    const text = el("m-text").value.trim();
-    if(!who||!text) return alert("Enter your agent’s name + memory text first.");
+  // memory save
+  el("save-mem").onclick=()=>{
+    const who=el("p-name").value.trim(),text=el("m-text").value.trim()
+    if(!who||!text) return alert("enter name + memory")
     fetch("/memory",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({name:who,text})})
       .then(r=>r.json()).then(j=>{
-        if(j.ok){ el("m-text").value=""; alert("Memory added!"); }
-        else alert(j.error||"Error");
-      });
-  };
+        if(j.ok){el("m-text").value="";alert("memory added!") }
+        else alert(j.error||"error")
+      })
+  }
 
-  /* Elements used during game ------*/
-  const selScenario = el("scenario"),  scenarioLoadError = el("scenario-load-error");
-  const selGM       = el("gm"),        gmLoadError       = el("gm-load-error");
-  const startCard   = el("start-card"), gameCard   = el("game-card");
-  const agentName   = el("agent-name"), agentPersona = el("agent-persona");
-  const dialogueBox = el("dialogue"),   instructionArea = el("instruction-area");
-  const userInstruction = el("user-instruction");
-  const newGameBtn = el("new-game-btn"), startGameBtn = el("start-game-btn");
-  const submitTurnBtn = el("submit-turn-btn"), downloadBtn = el("download-btn");
-  const outcomeDiv = document.querySelector(".outcome"), errorDiv = document.querySelector(".error-message");
-  const scenarioTitle = el("scenario-title"), initialSetup = el("initial-setup"), gameOverArea = el("game-over-area");
-  const phaseIndicator = el("phase-indicator"), gmNameEl = el("gm-name");
+  // populate scenarios / gms / profiles
+  fetch("/scenarios").then(r=>r.json()).then(l=>{
+    el("scenario").innerHTML=l.map(s=>`<option value="${s.id}">${s.title}</option>`).join("")
+  })
+  fetch("/gms").then(r=>r.json()).then(l=>{
+    el("gm").innerHTML=l.map(g=>`<option value="${g.id}">${g.name} (${g.difficulty})</option>`).join("")
+  })
+  fetch("/profiles").then(r=>r.json()).then(names=>{
+    el("profile").insertAdjacentHTML("beforeend",names.map(n=>`<option>${n}</option>`).join(""))
+  })
 
-  /* State --------------------------*/
-  let sessionId=null, me=null, personas={};
+  // toggle custom agent fields
+  el("profile").onchange=e=>{
+    el("custom-agent-fields").classList.toggle("hidden",e.target.value!=="")
+  }
 
-  /* Dialogue rendering -------------*/
-  const lineHTML = (speaker,text,side) => `
+  // helpers for game ui
+  const selScenario=el("scenario"),selGM=el("gm")
+  const startCard=el("start-card"),gameCard=el("game-card")
+  const agentName=el("agent-name"),agentPersona=el("agent-persona")
+  const dialogueBox=el("dialogue"),instructionArea=el("instruction-area")
+  const userInstruction=el("user-instruction")
+  const newGameBtn=el("new-game-btn"),startGameBtn=el("start-game-btn")
+  const submitTurnBtn=el("submit-turn-btn"),downloadBtn=el("download-btn")
+  const outcomeDiv=document.querySelector(".outcome"),errorDiv=document.querySelector(".error-message")
+  const scenarioTitle=el("scenario-title"),initialSetup=el("initial-setup"),gameOverArea=el("game-over-area")
+  const phaseIndicator=el("phase-indicator"),gmNameEl=el("gm-name")
+
+  let sessionId=null,me=null,personas={}
+
+  const lineHTML=(s,t,side)=>`
     <div class="flex ${side==='me'?'justify-end':''} ${side==='gm'?'gm':''}">
       <div class="bubble rounded-xl px-4 py-2 shadow max-w-[70%] ${side==='me'?'bg-blue-600 text-white':''} ${side==='them'?'bg-slate-200':''}">
-        <span class="speaker block text-xs font-semibold mb-1 opacity-80">${speaker}</span>
-        <span class="message block">${text}</span>
+        <span class="speaker block text-xs font-semibold mb-1 opacity-80">${s}</span>
+        <span class="message block">${t}</span>
       </div>
-    </div>`;
+    </div>`
 
   function appendDialogue(raw){
     raw.split("\n").forEach(l=>{
-      if(!l.trim()) return;
-      const narrator = l.startsWith("GM:");
-      const parts    = narrator ? ["GM", l.slice(3)] : l.split(":");
-      if(parts.length<2){ return; }
-
-      const speaker = narrator ? "Game Master" : parts[0].trim();
-      const text    = narrator ? parts[1].trim() : parts.slice(1).join(":").trim();
-      const side    = narrator ? "gm" : (speaker===me ? "me" : "them");
-
-      dialogueBox.insertAdjacentHTML("beforeend", lineHTML(speaker,text,side));
-
-      // tooltip (once per speaker)
-      if(!narrator && personas[speaker] && !document.querySelector(`[data-tip='${speaker}']`)){
-        const lastBubble = dialogueBox.lastElementChild.querySelector(".bubble");
-        lastBubble.setAttribute("data-tip", speaker);
-        lastBubble.setAttribute("data-tippy-content", personas[speaker]);
-        tippy(lastBubble, { theme:"light", maxWidth:220 });
+      if(!l.trim())return
+      const narrator=l.startsWith("GM:")
+      const parts=narrator?["GM",l.slice(3)]:l.split(":")
+      if(parts.length<2)return
+      const speaker=narrator?"Game Master":parts[0].trim()
+      const text   =narrator?parts[1].trim():parts.slice(1).join(":").trim()
+      const side   =narrator?"gm":(speaker===me?"me":"them")
+      dialogueBox.insertAdjacentHTML("beforeend",lineHTML(speaker,text,side))
+      if(!narrator&&personas[speaker]&&!document.querySelector(`[data-tip='${speaker}']`)){
+        const b=dialogueBox.lastElementChild.querySelector(".bubble")
+        b.setAttribute("data-tip",speaker)
+        b.setAttribute("data-tippy-content",personas[speaker])
+        tippy(b,{theme:"light",maxWidth:220})
       }
-    });
-    dialogueBox.scrollTop = dialogueBox.scrollHeight;
+    })
+    dialogueBox.scrollTop=dialogueBox.scrollHeight
   }
 
-  const setLoading = flag=>{
-    submitTurnBtn.disabled=startGameBtn.disabled=userInstruction.disabled=flag;
-    submitTurnBtn.textContent = flag? "…" : "Submit";
-    startGameBtn.textContent  = flag? "…" : "Start Game";
-    if(flag){
+  const setLoading=f=>{
+    submitTurnBtn.disabled=startGameBtn.disabled=userInstruction.disabled=f
+    submitTurnBtn.textContent=f?"…":"Submit"
+    startGameBtn.textContent=f?"…":"Start Game"
+    if(f){
       dialogueBox.insertAdjacentHTML("beforeend",
-        '<div id="typing" class="flex gm"><div class="bubble rounded-xl px-4 py-2 shadow bg-amber-100"><span class="speaker block text-xs font-semibold mb-1">GM</span><span class="message">…</span></div></div>');
-      dialogueBox.scrollTop = dialogueBox.scrollHeight;
-    }else{
-      document.getElementById("typing")?.remove();
-    }
-  };
+        '<div id="typing" class="flex gm"><div class="bubble rounded-xl px-4 py-2 shadow bg-amber-100"><span class="speaker block text-xs font-semibold mb-1">GM</span><span class="message">…</span></div></div>')
+      dialogueBox.scrollTop=dialogueBox.scrollHeight
+    }else el("typing")?.remove()
+  }
 
-  const endGame = (label,outcome,msg)=>{
-    setLoading(false);
-    instructionArea.classList.add("hidden");
-    gameOverArea.classList.remove("hidden");
-    outcomeDiv.textContent = label? `${label}: ${outcome.join(", ")}` : "";
-    errorDiv.textContent   = msg||"";
-    errorDiv.classList.toggle("hidden",!msg);
-    downloadBtn.classList.remove("hidden");
-  };
+  const endGame=(label,outcome,msg)=>{
+    setLoading(false)
+    instructionArea.classList.add("hidden")
+    gameOverArea.classList.remove("hidden")
+    outcomeDiv.textContent=label?`${label}: ${outcome.join(", ")}`:""
+    errorDiv.textContent=msg||""
+    errorDiv.classList.toggle("hidden",!msg)
+    downloadBtn.classList.remove("hidden")
+  }
 
-  const reset = ()=>{
-    sessionId=null; me=null; personas={};
-    startCard.classList.remove("hidden"); gameCard.classList.add("hidden");
-    downloadBtn.classList.add("hidden"); dialogueBox.innerHTML=""; userInstruction.value="";
-    gameOverArea.classList.add("hidden"); instructionArea.classList.remove("hidden");
-    phaseIndicator.textContent="Phase: Introduction";
-  };
+  const reset=()=>{
+    sessionId=null;me=null;personas={}
+    startCard.classList.remove("hidden");gameCard.classList.add("hidden")
+    downloadBtn.classList.add("hidden");dialogueBox.innerHTML="";userInstruction.value=""
+    gameOverArea.classList.add("hidden");instructionArea.classList.remove("hidden")
+    phaseIndicator.textContent="Phase: Introduction"
+  }
 
-  /* Page load: fetch scenarios & GMs */
-  fetch("/scenarios").then(r=>r.json()).then(list=>{
-    selScenario.innerHTML=list.map(s=>`<option value="${s.id}">${s.title}</option>`).join("");
-  }).catch(()=>scenarioLoadError.classList.remove("hidden"));
-
-  fetch("/gms").then(r=>r.json()).then(list=>{
-    selGM.innerHTML=list.map(g=>`<option value="${g.id}">${g.name} (${g.difficulty})</option>`).join("");
-  }).catch(()=>gmLoadError.classList.remove("hidden"));
-
-  /* Start game --------------------*/
-  startGameBtn.onclick = ()=>{
-    if(!agentName.value.trim()||!agentPersona.value.trim()) return alert("Enter name & persona");
-    setLoading(true);
-    fetch("/start_game",{method:"POST",headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        scenario_id: selScenario.value,
-        gm_id:       selGM.value,
-        name:        agentName.value,
-        persona:     agentPersona.value
-      })})
+  // start game click
+  startGameBtn.onclick=()=>{
+    const prof=el("profile").value
+    if(!prof && (!agentName.value.trim()||!agentPersona.value.trim()))
+      return alert("enter name & persona or pick a profile")
+    setLoading(true)
+    fetch("/start_game",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      scenario_id:selScenario.value,
+      gm_id:selGM.value,
+      profile_name:prof||null,
+      name: prof?"":agentName.value.trim(),
+      persona: prof?"":agentPersona.value.trim()
+    })})
     .then(r=>r.json()).then(res=>{
-      sessionId=res.session_id; me=agentName.value.trim();
-      personas = Object.fromEntries(res.agents.map(a=>[a.name,a.persona]));
-      startCard.classList.add("hidden");  gameCard.classList.remove("hidden");
-      scenarioTitle.textContent=res.scenario_title;
-      gmNameEl.textContent = `GM: ${res.gm_name} (${res.gm_difficulty})`;
-      initialSetup.textContent=res.initial_setup;
-      phaseIndicator.textContent="Phase: Introduction";
-      setLoading(false);
-    }).catch(e=>{alert(e.message); setLoading(false);});
-  };
+      sessionId=res.session_id;me=prof||agentName.value.trim()
+      personas=Object.fromEntries(res.agents.map(a=>[a.name,a.persona]))
+      startCard.classList.add("hidden");gameCard.classList.remove("hidden")
+      scenarioTitle.textContent=res.scenario_title
+      gmNameEl.textContent=`GM: ${res.gm_name} (${res.gm_difficulty})`
+      initialSetup.textContent=res.initial_setup
+      phaseIndicator.textContent="Phase: Introduction"
+      setLoading(false)
+    }).catch(e=>{alert(e.message);setLoading(false)})
+  }
 
-  /* Submit turn -------------------*/
-  submitTurnBtn.onclick = ()=>{
-    if(!userInstruction.value.trim()) return;
-    setLoading(true);
-    fetch("/submit_turn",{method:"POST",headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({session_id:sessionId,instruction:userInstruction.value,agent_name:me})})
+  // submit turn
+  submitTurnBtn.onclick=()=>{
+    if(!userInstruction.value.trim())return
+    setLoading(true)
+    fetch("/submit_turn",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      session_id:sessionId,instruction:userInstruction.value,agent_name:me})})
     .then(r=>r.json()).then(res=>{
-      if(res.dialogue_segment) appendDialogue(res.dialogue_segment);
-      if(res.phase_label) phaseIndicator.textContent="Phase: "+res.phase_label;
-      userInstruction.value="";
-      if(res.game_over) endGame(res.outcome_label,res.outcome,res.message);
-      else setLoading(false);
-    }).catch(e=>{endGame(null,null,e.message);});
-  };
+      if(res.dialogue_segment)appendDialogue(res.dialogue_segment)
+      if(res.phase_label)phaseIndicator.textContent="Phase: "+res.phase_label
+      userInstruction.value=""
+      if(res.game_over)endGame(res.outcome_label,res.outcome,res.message)
+      else setLoading(false)
+    }).catch(e=>{endGame(null,null,e.message)})
+  }
 
-  /* other buttons -----------------*/
-  newGameBtn.onclick = reset;
-
-  downloadBtn.onclick = ()=>{
+  // misc buttons
+  newGameBtn.onclick=reset
+  downloadBtn.onclick=()=>{
     fetch("/download",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId})})
-    .then(r=>r.blob()).then(blob=>{
-      const url=URL.createObjectURL(blob), a=document.createElement("a");
-      a.href=url; a.download="simulation.md"; document.body.appendChild(a); a.click();
-      URL.revokeObjectURL(url); a.remove();
-    });
-  };
-
-  /* Ctrl+Enter shortcut ----------*/
+    .then(r=>r.blob()).then(b=>{
+      const url=URL.createObjectURL(b),a=document.createElement("a")
+      a.href=url;a.download="simulation.md";document.body.appendChild(a);a.click()
+      URL.revokeObjectURL(url);a.remove()
+    })
+  }
   userInstruction.addEventListener("keydown",e=>{
-    if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) submitTurnBtn.click();
-  });
+    if(e.key==="Enter"&&(e.ctrlKey||e.metaKey))submitTurnBtn.click()
+  })
   </script>
 </body>
 </html>

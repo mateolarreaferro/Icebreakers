@@ -27,6 +27,8 @@ SOURCE_FILES = [
     "npc_agents.py",
     "room.py",
     "scenarios.py",
+    "memory_manager.py",
+    "storage.py",
     "templates/index.html",
 ]
 

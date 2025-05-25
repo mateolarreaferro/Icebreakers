@@ -2,7 +2,6 @@ import os
 from openai import OpenAI
 from settings import OPENAI_API_KEY
 
-# Gets key from settings!
 _oai = OpenAI(api_key=OPENAI_API_KEY)
 
 
