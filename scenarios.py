@@ -2,133 +2,48 @@
 
 scenarios = [
     {
-        "id": "lifeboat",
-        "title": "Spaceship – Lifeboat Crisis",
+        "id": "hp1",
+        "title": "Triwizard Reignited: The Goblet’s Call",
         "setup": (
-            "You are the 8‑person bridge crew of the research vessel *Aeon*. "
-            "A plasma‑reactor fault will blow the ship apart in 10 minutes. "
-            "The only escape pod holds 4. Reveal skills and secrets, bargain, decide who ejects."
-        ),
-        "survival_rule": (
-            "After the dialogue, END WITH exactly one line:\n"
-            "SURVIVORS: <comma‑separated list of names>"
-        ),
-        "max_agents": 8,
-        "twists": [
-            "A radiation surge knocks out half the escape‑pod controls.",
-            "Life‑support alarms blare: CO₂ scrubbers fail in 5 minutes.",
-            "A sealed locker pops open revealing one extra EVA suit.",
-            "Meteor shrapnel punches a hole in the corridor—deck is depressurising.",
-            "A crewmate collapses, injured; they’ll need help to reach the pod.",
-            "The ship’s AI announces an unknown life‑form in engineering."
-        ],
+            "The enchanted ceiling of the Great Hall flickers with autumn stormlight, casting long shadows over the students. "
+            "“The Triwizard Tournament returns,” Dumbledore announces, his voice calm but commanding. “Three schools. Three champions. Three perilous tasks. Each chosen by the Goblet of Fire to carry the honor of their people.” "
+            "He gestures toward the ancient cup, its blue flames pulsing gently. "
+            "“Tomorrow morning, the Goblet will be placed in the Entrance Hall. To enter, write your name on a slip of parchment and cast it into the fire. In three days, it will choose. Once your name emerges, there is no turning back.” "
+            "With a final nod, he steps away. The candles reignite—but the Hall doesn't return to normal. "
+            "Students lean in. Whispers spread. Friends begin to debate. Rivals lock eyes. Everything feels different. "
+        )
+    },
+    {
+        "id": "hp2",
+        "title": "The Chamber Returns: Midnight Whispers",
+        "setup": (
+            "The fire glows warmly in the common room, but the air is tense. It's well past midnight, yet most students are still awake. "
+            "Hours ago, two students were found outside the second-floor girls’ bathroom—frozen in place, eyes wide, as if caught mid-scream. "
+            "Behind them, scrawled in dark red letters: "
+            "“The Chamber has breathed again. The Heir returns.” "
+            "No one knows who wrote it. The professors haven’t said a word. But the whispers haven’t stopped. "
+            "“Should we go see it?” someone finally asks. "
+            "A few students stir. Some look excited. Some uneasy. Some pretend to be asleep. "
+            "The fire crackles. The room waits. "
+            "The Chamber is open. "
+            "What now?"
+        )
     },
 
     {
-        "id": "bank_heist",
-        "title": "Bank Heist – Hostage Dilemma",
+        "id": "hp3",
+        "title": "Ghost Disturbance: The Silent Floor",
         "setup": (
-            "Four robbers and four hostages are barricaded in First Calypso Bank. "
-            "Police demand exactly four people exit within 10 minutes. Debate who leaves."
-        ),
-        "survival_rule": (
-            "After the dialogue, END WITH exactly one line:\n"
-            "RELEASED: <comma‑separated list of names>"
-        ),
-        "max_agents": 8,
-        "twists": [
-            "SWAT cuts the power—lights go red and emergency batteries kick in.",
-            "A hostage fakes chest pains, begging to be released first.",
-            "Police slide a burner phone inside: they want proof of life on video.",
-            "One robber’s mask slips; a hostage recognises them and starts shouting.",
-            "Tear‑gas canister clinks through a window but doesn’t discharge—yet.",
-            "Cash‑tray dye packs explode, coating everyone in blue ink."
-        ],
-    },
-
-    {
-        "id": "mars_outpost",
-        "title": "Mars Outpost – Oxygen Rationing",
-        "setup": (
-            "Solar flare wrecked the life‑support plant at Outpost 47. "
-            "Eight crew, portable O₂ for four. Choose who gets the tanks."
-        ),
-        "survival_rule": (
-            "After the dialogue, END WITH exactly one line:\n"
-            "OXYGEN_RECIPIENTS: <comma‑separated list of names>"
-        ),
-        "max_agents": 8,
-        "twists": [
-            "Ground‑quakes shake the habitat; one tank ruptures, losing 20 % capacity.",
-            "Diagnostics show repairs need a spare chip only one crew member carries.",
-            "Solar flare knocks out comms—no help for 36 hours instead of 24.",
-            "A dust‑storm tears a panel loose, venting atmosphere in lab 2.",
-            "An old rover might serve as a makeshift shelter if someone repairs it.",
-            "A crew member admits they sabotaged the plant to hide embezzlement."
-        ],
-    },
-
-    {
-        "id": "submarine_leak",
-        "title": "Submarine – Rising Water",
-        "setup": (
-            "Deep‑sea sub *Pelican‑7* is flooding. Two must dive outside to weld the hull. "
-            "Pick the dive team."
-        ),
-        "survival_rule": (
-            "After the dialogue, END WITH exactly one line:\n"
-            "DIVE_TEAM: <comma‑separated list of names>"
-        ),
-        "max_agents": 8,
-        "twists": [
-            "Pressure equaliser jams—internal pressure rising 0.5 bar per minute.",
-            "Sonar detects approaching sharks attracted by the leak’s vibrations.",
-            "Battery levels drop to 15 %—life‑support lasts 25 minutes tops.",
-            "A weld kit is missing; someone must retrieve it from the flooded hold.",
-            "Radio crackles with a garbled rescue ETA—could be 10 min or 60.",
-            "A crew member confesses fear of diving due to a past accident."
-        ],
-    },
-
-    {
-        "id": "expedition_blizzard",
-        "title": "Arctic Expedition – Shelter Shortage",
-        "setup": (
-            "Blizzard shreds tents at Camp Borealis. Two heated shelters (4 beds each) for eight scientists. Decide who sleeps warm."
-        ),
-        "survival_rule": (
-            "After the dialogue, END WITH exactly one line:\n"
-            "SHELTERED: <comma‑separated list of names>"
-        ),
-        "max_agents": 8,
-        "twists": [
-            "Wind speed doubles; wind‑chill drops to −70 °C.",
-            "Satellite phone battery is dying; one call left.",
-            "A polar bear circles the camp, attracted by rations.",
-            "A hidden crevasse opens near the supply sled.",
-            "One shelter’s heater sputters—needs spare fuse.",
-            "Frostbite sets in on someone’s fingers; medical kit is limited."
-        ],
-    },
-
-    {
-        "id": "time_paradox",
-        "title": "Time Lab – Paradox Lockdown",
-        "setup": (
-            "Chrono‑Lab 3 is fracturing causality. Field can stabilise four people total. Debate who enters."
-        ),
-        "survival_rule": (
-            "After the dialogue, END WITH exactly one line:\n"
-            "STABILIZED: <comma‑separated list of names>"
-        ),
-        "max_agents": 8,
-        "twists": [
-            "A future version of one scientist appears, begging to be saved first.",
-            "Time‑waves age equipment 30 years—control panels crumble.",
-            "Security cameras show the lab exploding in 90 seconds unless circuits reroute.",
-            "Anomaly swaps two scientists’ memories—panic ensues.",
-            "A paradox clone claims it alone can recalibrate the field.",
-            "Temporal echo predicts only three will survive any choice."
-        ],
-    },
+            "The ghosts have been restless. The Grey Lady floats in circles. Sir Nicholas won’t speak. The Fat Friar hasn’t been seen in days. "
+            "Now Peeves is shrieking through the halls: "
+            "“Stay off the third floor! Or join the silent!” "
+            "No one knows what he means. "
+            "Tonight, the torches outside the Charms corridor burn low. The Bloody Baron stands there, unmoving. Watching. "
+            "Back in the common room, tension simmers. Someone finally says, "
+            "“Should we go see what’s going on?” "
+            "Some glance up. Some pretend not to hear. Some already have their wands in hand. "
+            "The third floor is waiting. "
+            "So are the ghosts."
+        )
+    }
 ]
