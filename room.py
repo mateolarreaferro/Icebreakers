@@ -31,7 +31,7 @@ class Room:
         self.twists_remaining            = self.scenario.get("twists", []).copy()
         random.shuffle(self.twists_remaining)
 
-        self.phase      = 0
+        self.phase = 0
         self.game_over  = False
         self.outcome: list[str] | None = None
 
@@ -71,7 +71,7 @@ class Room:
             + (kill_rule if self.phase < 3 else resolution_rule)
         )
 
-        # bio & memories - profile integraton (test)
+        # bio & memories - profile integraton (tested!)
         bio  = get_profile(user_agent.name) or {}
         bio_lines = [
             f"- Home: {bio.get('home')}" if bio.get("home") else "",
