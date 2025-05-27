@@ -56,8 +56,23 @@ def start_game():
     if not all([scenario_id, gm_id, user_name, user_persona]):
         return jsonify({"error": "missing scenario, gm, name, or persona"}), 400
 
-    scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
-    gm = next((g for g in gm_list   if g["id"] == gm_id), None)
+    if scenario_id == "custom":
+        setup = (data.get("custom_setup") or "").strip()
+        if not setup:
+            return jsonify({"error": "custom_setup required"}), 400
+        scenario = {
+            "id": f"custom_{uuid.uuid4().hex[:6]}",
+            "title": (data.get("custom_title") or "Custom Scenario").strip(),
+            "setup": setup,
+            "survival_rule": "Survivors:",
+            "twists": [],
+        }
+        scenarios.append(scenario)
+        scenario_id = scenario["id"]
+    else:
+        scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
+
+    gm = next((g for g in gm_list if g["id"] == gm_id), None)
     if not scenario or not gm:
         return jsonify({"error": "invalid scenario_id or gm_id"}), 404
 
@@ -74,12 +89,12 @@ def start_game():
     game_sessions[session_id] = room
 
     return jsonify({
-        "session_id" : session_id,
+        "session_id": session_id,
         "scenario_title": room.scenario["title"],
-        "initial_setup" : room.scenario["setup"],
-        "gm_name" : gm["name"],
+        "initial_setup": room.scenario["setup"],
+        "gm_name": gm["name"],
         "gm_difficulty": gm["difficulty"],
-        "agents" : [{"name": a.name, "persona": a.persona} for a in all_agents],
+        "agents": [{"name": a.name, "persona": a.persona} for a in all_agents],
     })
 
 

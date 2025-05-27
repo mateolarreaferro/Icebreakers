@@ -54,6 +54,12 @@
         <p id="scenario-load-error" class="text-red-500 mt-1 hidden">Could not load scenarios.</p>
       </label>
 
+      <!-- custom scenario fields -->
+      <div id="custom-scenario-fields" class="space-y-2 hidden">
+        <input id="custom-title" type="text" class="w-full border p-2 rounded" placeholder="Scenario title (optional)"/>
+        <textarea id="custom-setup" class="w-full border p-2 rounded h-24" placeholder="Describe the initial setup…"></textarea>
+      </div>
+
       <label class="block">
         <span class="font-medium">Game Master</span>
         <select id="gm" class="mt-1 w-full border p-2 rounded"></select>
@@ -149,6 +155,7 @@
   // populate scenarios / gms / profiles
   fetch("/scenarios").then(r=>r.json()).then(l=>{
     el("scenario").innerHTML=l.map(s=>`<option value="${s.id}">${s.title}</option>`).join("")
+    el("scenario").insertAdjacentHTML("beforeend",'<option value="custom">— custom —</option>')
   })
   fetch("/gms").then(r=>r.json()).then(l=>{
     el("gm").innerHTML=l.map(g=>`<option value="${g.id}">${g.name} (${g.difficulty})</option>`).join("")
@@ -162,10 +169,16 @@
     el("custom-agent-fields").classList.toggle("hidden",e.target.value!=="")
   }
 
+  // toggle custom scenario fields
+  el("scenario").onchange=e=>{
+    el("custom-scenario-fields").classList.toggle("hidden",e.target.value!=="custom")
+  }
+
   // helpers for game ui
   const selScenario=el("scenario"),selGM=el("gm")
   const startCard=el("start-card"),gameCard=el("game-card")
   const agentName=el("agent-name"),agentPersona=el("agent-persona")
+  const customTitle=el("custom-title"),customSetup=el("custom-setup")
   const dialogueBox=el("dialogue"),instructionArea=el("instruction-area")
   const userInstruction=el("user-instruction")
   const newGameBtn=el("new-game-btn"),startGameBtn=el("start-game-btn")
@@ -236,16 +249,23 @@
   // start game click
   startGameBtn.onclick=()=>{
     const prof=el("profile").value
+    if(selScenario.value==="custom"&&(!customSetup.value.trim()))
+      return alert("enter custom scenario setup")
     if(!prof && (!agentName.value.trim()||!agentPersona.value.trim()))
       return alert("enter name & persona or pick a profile")
     setLoading(true)
-    fetch("/start_game",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    const body={
       scenario_id:selScenario.value,
       gm_id:selGM.value,
       profile_name:prof||null,
       name: prof?"":agentName.value.trim(),
       persona: prof?"":agentPersona.value.trim()
-    })})
+    }
+    if(selScenario.value==="custom"){
+      body.custom_setup=customSetup.value.trim()
+      body.custom_title=customTitle.value.trim()
+    }
+    fetch("/start_game",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(r=>r.json()).then(res=>{
       sessionId=res.session_id;me=prof||agentName.value.trim()
       personas=Object.fromEntries(res.agents.map(a=>[a.name,a.persona]))
