@@ -28,7 +28,7 @@ def list_scenarios():
 # game-masters list
 @app.route("/gms")
 def list_gms():
-    return jsonify([{k: g[k] for k in ("id", "name", "difficulty")} for g in gm_list])
+    return jsonify([{k: g[k] for k in ("id", "name")} for g in gm_list])
 
 # profiles list for dropdown
 @app.get("/profiles")
@@ -93,7 +93,6 @@ def start_game():
         "scenario_title": room.scenario["title"],
         "initial_setup": room.scenario["setup"],
         "gm_name": gm["name"],
-        "gm_difficulty": gm["difficulty"],
         "agents": [{"name": a.name, "persona": a.persona} for a in all_agents],
     })
 

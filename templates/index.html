@@ -158,7 +158,7 @@
     el("scenario").insertAdjacentHTML("beforeend",'<option value="custom">— custom —</option>')
   })
   fetch("/gms").then(r=>r.json()).then(l=>{
-    el("gm").innerHTML=l.map(g=>`<option value="${g.id}">${g.name} (${g.difficulty})</option>`).join("")
+    el("gm").innerHTML=l.map(g=>`<option value="${g.id}">${g.name}</option>`).join("")
   })
   fetch("/profiles").then(r=>r.json()).then(names=>{
     el("profile").insertAdjacentHTML("beforeend",names.map(n=>`<option>${n}</option>`).join(""))
@@ -271,7 +271,7 @@
       personas=Object.fromEntries(res.agents.map(a=>[a.name,a.persona]))
       startCard.classList.add("hidden");gameCard.classList.remove("hidden")
       scenarioTitle.textContent=res.scenario_title
-      gmNameEl.textContent=`GM: ${res.gm_name} (${res.gm_difficulty})`
+      gmNameEl.textContent=`GM: ${res.gm_name}`
       initialSetup.textContent=res.initial_setup
       phaseIndicator.textContent="Phase: Introduction"
       setLoading(false)

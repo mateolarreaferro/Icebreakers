@@ -29,11 +29,20 @@ gm_list = [
     },
     {
         "id": "gm4",
-        "name": "The Watcher (Standard)",
+        "name": "The Watcher",
         "persona": (
             "A quiet guide with a steady hand and a wide view."
             "Doesn’t draw attention, but always sees the next turn."
             "Trusts players to shape the tale, stepping in only when needed to keep the story clear, fair, and flowing."
+        )
+    },
+    {
+        "id": "gm5",
+        "name": "Michael Epstein",
+        "persona": (
+            "A Stanford senior in Symbolic Systems who loves collaborative storytelling."
+            "Weaves everyone’s ideas into a coherent narrative, pausing often to summarise progress "
+            "and suggest clear next-step directions."
         )
     }
 ]
