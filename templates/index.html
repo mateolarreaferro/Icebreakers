@@ -11,10 +11,12 @@
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css"/>
 
   <style>
-    :root{--gm-bg:#fef3c7;--gm-text:#92400e}
+    :root{--gm-bg:#fef3c7;--gm-text:#92400e;--gm-dir-bg:#c7d2fe;--gm-dir-text:#1e3a8a}
     .bubble{word-break:break-word}
     .gm .bubble{background:var(--gm-bg);color:var(--gm-text);font-style:italic}
     .gm .speaker{color:var(--gm-text)}
+    .gm-dir .bubble{background:var(--gm-dir-bg);color:var(--gm-dir-text);font-style:italic}
+    .gm-dir .speaker{color:var(--gm-dir-text)}
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-700 flex flex-col items-center">
@@ -86,16 +88,10 @@
 
     <!-- game card -->
     <div id="game-card" class="bg-white shadow rounded-lg p-6 mt-6 hidden flex flex-col space-y-4">
-      <div id="phase-indicator" class="text-sm font-semibold text-amber-700 mb-2">Phase: Introduction</div>
+      <div id="phase-indicator" class="text-sm font-semibold text-amber-700 mb-2">Phase: Act I</div>
 
-      <div class="flex justify-end space-x-2">
-        <button id="download-btn" class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded hidden">
-          Download
-        </button>
-        <button id="new-game-btn" class="bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded">
-          New Game
-        </button>
-      </div>
+      <!-- screenplay -->
+      <div id="screenplay" class="bg-white border rounded-lg p-4 max-h-[40vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed"></div>
 
       <div>
         <h2 id="scenario-title" class="text-xl font-semibold"></h2>
@@ -103,12 +99,11 @@
         <p  id="initial-setup"  class="mt-1"></p>
       </div>
 
-      <div id="dialogue" class="flex flex-col space-y-4 max-h-[60vh] overflow-y-auto pr-2"></div>
+      <!-- dialogue/chat -->
+      <div id="dialogue" class="flex flex-col space-y-4 max-h-[40vh] overflow-y-auto pr-2"></div>
 
       <div id="game-over-area" class="text-center hidden">
-        <p class="font-semibold text-lg">Game Over!</p>
-        <p class="outcome mt-1"></p>
-        <p class="error-message text-red-500 mt-1 hidden"></p>
+        <p class="font-semibold text-lg">The End</p>
       </div>
 
       <div id="instruction-area" class="sticky bottom-0 bg-white pt-4 flex space-x-2">
@@ -164,17 +159,15 @@
     el("profile").insertAdjacentHTML("beforeend",names.map(n=>`<option>${n}</option>`).join(""))
   })
 
-  // toggle custom agent fields
+  // toggle custom fields
   el("profile").onchange=e=>{
     el("custom-agent-fields").classList.toggle("hidden",e.target.value!=="")
   }
-
-  // toggle custom scenario fields
   el("scenario").onchange=e=>{
     el("custom-scenario-fields").classList.toggle("hidden",e.target.value!=="custom")
   }
 
-  // helpers for game ui
+  // helpers
   const selScenario=el("scenario"),selGM=el("gm")
   const startCard=el("start-card"),gameCard=el("game-card")
   const agentName=el("agent-name"),agentPersona=el("agent-persona")
@@ -182,15 +175,15 @@
   const dialogueBox=el("dialogue"),instructionArea=el("instruction-area")
   const userInstruction=el("user-instruction")
   const newGameBtn=el("new-game-btn"),startGameBtn=el("start-game-btn")
-  const submitTurnBtn=el("submit-turn-btn"),downloadBtn=el("download-btn")
-  const outcomeDiv=document.querySelector(".outcome"),errorDiv=document.querySelector(".error-message")
-  const scenarioTitle=el("scenario-title"),initialSetup=el("initial-setup"),gameOverArea=el("game-over-area")
-  const phaseIndicator=el("phase-indicator"),gmNameEl=el("gm-name")
+  const submitTurnBtn=el("submit-turn-btn")
+  const screenplayBox=el("screenplay")
+  const scenarioTitle=el("scenario-title"),initialSetup=el("initial-setup"),gmNameEl=el("gm-name")
+  const phaseIndicator=el("phase-indicator"),gameOverArea=el("game-over-area")
 
-  let sessionId=null,me=null,personas={}
+  let sessionId=null,me=null,personas={},gmName=null,screenplay=""
 
   const lineHTML=(s,t,side)=>`
-    <div class="flex ${side==='me'?'justify-end':''} ${side==='gm'?'gm':''}">
+    <div class="flex ${side==='me'?'justify-end':''} ${side==='gm'?'gm':''} ${side==='gm_dir'?'gm-dir':''}">
       <div class="bubble rounded-xl px-4 py-2 shadow max-w-[70%] ${side==='me'?'bg-blue-600 text-white':''} ${side==='them'?'bg-slate-200':''}">
         <span class="speaker block text-xs font-semibold mb-1 opacity-80">${s}</span>
         <span class="message block">${t}</span>
@@ -200,53 +193,55 @@
   function appendDialogue(raw){
     raw.split("\n").forEach(l=>{
       if(!l.trim())return
-      const narrator=l.startsWith("GM:")
-      const parts=narrator?["GM",l.slice(3)]:l.split(":")
-      if(parts.length<2)return
-      const speaker=narrator?"Game Master":parts[0].trim()
-      const text   =narrator?parts[1].trim():parts.slice(1).join(":").trim()
-      const side   =narrator?"gm":(speaker===me?"me":"them")
-      dialogueBox.insertAdjacentHTML("beforeend",lineHTML(speaker,text,side))
-      if(!narrator&&personas[speaker]&&!document.querySelector(`[data-tip='${speaker}']`)){
-        const b=dialogueBox.lastElementChild.querySelector(".bubble")
-        b.setAttribute("data-tip",speaker)
-        b.setAttribute("data-tippy-content",personas[speaker])
-        tippy(b,{theme:"light",maxWidth:220})
+      if(l.startsWith("GM_DIRECTION:")){
+        const text=l.slice(13).trim()
+        const speaker=gmName
+        const side="gm_dir"
+        dialogueBox.insertAdjacentHTML("beforeend",lineHTML(speaker,text,side))
+        screenplay+=`${speaker}: ${text}\n`
+      }else{
+        const narrator=l.startsWith("GM:")
+        const parts=narrator?["GM",l.slice(3)]:l.split(":")
+        if(parts.length<2)return
+        const speaker=narrator?"Game Master":parts[0].trim()
+        const text=narrator?parts[1].trim():parts.slice(1).join(":").trim()
+        const side=narrator?"gm":(speaker===me?"me":"them")
+        dialogueBox.insertAdjacentHTML("beforeend",lineHTML(speaker,text,side))
+        if(!narrator&&personas[speaker]&&!document.querySelector(`[data-tip='${speaker}']`)){
+          const b=dialogueBox.lastElementChild.querySelector(".bubble")
+          b.setAttribute("data-tip",speaker)
+          b.setAttribute("data-tippy-content",personas[speaker])
+          tippy(b,{theme:"light",maxWidth:220})
+        }
+        screenplay+=`${speaker}: ${text}\n`
       }
     })
+    screenplayBox.textContent=screenplay
     dialogueBox.scrollTop=dialogueBox.scrollHeight
+    screenplayBox.scrollTop=screenplayBox.scrollHeight
   }
 
   const setLoading=f=>{
     submitTurnBtn.disabled=startGameBtn.disabled=userInstruction.disabled=f
     submitTurnBtn.textContent=f?"…":"Submit"
     startGameBtn.textContent=f?"…":"Start Game"
-    if(f){
-      dialogueBox.insertAdjacentHTML("beforeend",
-        '<div id="typing" class="flex gm"><div class="bubble rounded-xl px-4 py-2 shadow bg-amber-100"><span class="speaker block text-xs font-semibold mb-1">GM</span><span class="message">…</span></div></div>')
-      dialogueBox.scrollTop=dialogueBox.scrollHeight
-    }else el("typing")?.remove()
   }
 
-  const endGame=(label,outcome,msg)=>{
+  const endStory=()=>{
     setLoading(false)
     instructionArea.classList.add("hidden")
     gameOverArea.classList.remove("hidden")
-    outcomeDiv.textContent=label?`${label}: ${outcome.join(", ")}`:""
-    errorDiv.textContent=msg||""
-    errorDiv.classList.toggle("hidden",!msg)
-    downloadBtn.classList.remove("hidden")
   }
 
   const reset=()=>{
-    sessionId=null;me=null;personas={}
+    sessionId=null;me=null;personas={};gmName=null;screenplay=""
     startCard.classList.remove("hidden");gameCard.classList.add("hidden")
-    downloadBtn.classList.add("hidden");dialogueBox.innerHTML="";userInstruction.value=""
-    gameOverArea.classList.add("hidden");instructionArea.classList.remove("hidden")
-    phaseIndicator.textContent="Phase: Introduction"
+    dialogueBox.innerHTML="";userInstruction.value="";screenplayBox.textContent=""
+    instructionArea.classList.remove("hidden");gameOverArea.classList.add("hidden")
+    phaseIndicator.textContent="Phase: Act I"
   }
 
-  // start game click
+  // start game
   startGameBtn.onclick=()=>{
     const prof=el("profile").value
     if(selScenario.value==="custom"&&(!customSetup.value.trim()))
@@ -268,12 +263,14 @@
     fetch("/start_game",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(r=>r.json()).then(res=>{
       sessionId=res.session_id;me=prof||agentName.value.trim()
+      gmName=res.gm_name
       personas=Object.fromEntries(res.agents.map(a=>[a.name,a.persona]))
       startCard.classList.add("hidden");gameCard.classList.remove("hidden")
       scenarioTitle.textContent=res.scenario_title
       gmNameEl.textContent=`GM: ${res.gm_name}`
       initialSetup.textContent=res.initial_setup
-      phaseIndicator.textContent="Phase: Introduction"
+      screenplay=`${res.scenario_title}\n\n${res.initial_setup}\n\n`
+      screenplayBox.textContent=screenplay
       setLoading(false)
     }).catch(e=>{alert(e.message);setLoading(false)})
   }
@@ -288,21 +285,12 @@
       if(res.dialogue_segment)appendDialogue(res.dialogue_segment)
       if(res.phase_label)phaseIndicator.textContent="Phase: "+res.phase_label
       userInstruction.value=""
-      if(res.game_over)endGame(res.outcome_label,res.outcome,res.message)
+      if(res.phase_label==="Epilogue")endStory()
       else setLoading(false)
-    }).catch(e=>{endGame(null,null,e.message)})
+    }).catch(e=>{setLoading(false);alert(e.message)})
   }
 
-  // misc buttons
   newGameBtn.onclick=reset
-  downloadBtn.onclick=()=>{
-    fetch("/download",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId})})
-    .then(r=>r.blob()).then(b=>{
-      const url=URL.createObjectURL(b),a=document.createElement("a")
-      a.href=url;a.download="simulation.md";document.body.appendChild(a);a.click()
-      URL.revokeObjectURL(url);a.remove()
-    })
-  }
   userInstruction.addEventListener("keydown",e=>{
     if(e.key==="Enter"&&(e.ctrlKey||e.metaKey))submitTurnBtn.click()
   })
