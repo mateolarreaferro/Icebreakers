@@ -19,10 +19,10 @@ def gen_oai(messages, model: str = "gpt-4o", temperature: float = 1.0, max_token
 
 
 # High Level Helper - 
-def run_script(system_prompt: str, user_prompt: str, *, model: str = "gpt-4o", temperature: float = 1.0) -> str:
-    """Convenience helper: build a two‑message chat and return the assistant’s reply."""
+def run_script(system_prompt: str, user_prompt: str, *, model: str = "gpt-4o", temperature: float = 1.0, max_tokens: int = 1000) -> str:
+    """Convenience helper: build a two-message chat and return the assistant’s reply."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-    return gen_oai(messages, model=model, temperature=temperature)
+    return gen_oai(messages, model=model, temperature=temperature, max_tokens=max_tokens)

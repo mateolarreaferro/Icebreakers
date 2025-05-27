@@ -88,22 +88,18 @@
 
     <!-- game card -->
     <div id="game-card" class="bg-white shadow rounded-lg p-6 mt-6 hidden flex flex-col space-y-4">
-      <div id="phase-indicator" class="text-sm font-semibold text-amber-700 mb-2">Phase: Act I</div>
+      <div id="phase-indicator" class="text-sm font-semibold text-amber-700">Phase: Act I</div>
 
-      <!-- screenplay -->
-      <div id="screenplay" class="bg-white border rounded-lg p-4 max-h-[40vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed"></div>
+      <!-- live summary -->
+      <div id="summary-box" class="bg-white border rounded-lg p-4 text-sm leading-relaxed"></div>
 
-      <div>
-        <h2 id="scenario-title" class="text-xl font-semibold"></h2>
-        <p  id="gm-name"        class="text-sm italic text-slate-500"></p>
-        <p  id="initial-setup"  class="mt-1"></p>
-      </div>
-
-      <!-- dialogue/chat -->
+      <!-- chat -->
       <div id="dialogue" class="flex flex-col space-y-4 max-h-[40vh] overflow-y-auto pr-2"></div>
 
-      <div id="game-over-area" class="text-center hidden">
-        <p class="font-semibold text-lg">The End</p>
+      <div class="flex justify-end space-x-2 pt-2">
+        <button id="make-story-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded hidden">
+          Make story
+        </button>
       </div>
 
       <div id="instruction-area" class="sticky bottom-0 bg-white pt-4 flex space-x-2">
@@ -117,7 +113,6 @@
     </div>
   </div>
 
-  <!-- scripts -->
   <script>
   const el=id=>document.getElementById(id)
 
@@ -142,12 +137,12 @@
     if(!who||!text) return alert("enter name + memory")
     fetch("/memory",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({name:who,text})})
       .then(r=>r.json()).then(j=>{
-        if(j.ok){el("m-text").value="";alert("memory added!") }
+        if(j.ok){el("m-text").value="";alert("memory added!")}
         else alert(j.error||"error")
       })
   }
 
-  // populate scenarios / gms / profiles
+  // populate selects 
   fetch("/scenarios").then(r=>r.json()).then(l=>{
     el("scenario").innerHTML=l.map(s=>`<option value="${s.id}">${s.title}</option>`).join("")
     el("scenario").insertAdjacentHTML("beforeend",'<option value="custom">— custom —</option>')
@@ -159,7 +154,7 @@
     el("profile").insertAdjacentHTML("beforeend",names.map(n=>`<option>${n}</option>`).join(""))
   })
 
-  // toggle custom fields
+  // toggles
   el("profile").onchange=e=>{
     el("custom-agent-fields").classList.toggle("hidden",e.target.value!=="")
   }
@@ -172,15 +167,12 @@
   const startCard=el("start-card"),gameCard=el("game-card")
   const agentName=el("agent-name"),agentPersona=el("agent-persona")
   const customTitle=el("custom-title"),customSetup=el("custom-setup")
-  const dialogueBox=el("dialogue"),instructionArea=el("instruction-area")
+  const dialogueBox=el("dialogue"),summaryBox=el("summary-box")
   const userInstruction=el("user-instruction")
-  const newGameBtn=el("new-game-btn"),startGameBtn=el("start-game-btn")
-  const submitTurnBtn=el("submit-turn-btn")
-  const screenplayBox=el("screenplay")
-  const scenarioTitle=el("scenario-title"),initialSetup=el("initial-setup"),gmNameEl=el("gm-name")
-  const phaseIndicator=el("phase-indicator"),gameOverArea=el("game-over-area")
+  const startGameBtn=el("start-game-btn"),submitTurnBtn=el("submit-turn-btn"),makeStoryBtn=el("make-story-btn")
+  const phaseIndicator=el("phase-indicator")
 
-  let sessionId=null,me=null,personas={},gmName=null,screenplay=""
+  let sessionId=null,me=null,personas={},gmName=null
 
   const lineHTML=(s,t,side)=>`
     <div class="flex ${side==='me'?'justify-end':''} ${side==='gm'?'gm':''} ${side==='gm_dir'?'gm-dir':''}">
@@ -195,10 +187,7 @@
       if(!l.trim())return
       if(l.startsWith("GM_DIRECTION:")){
         const text=l.slice(13).trim()
-        const speaker=gmName
-        const side="gm_dir"
-        dialogueBox.insertAdjacentHTML("beforeend",lineHTML(speaker,text,side))
-        screenplay+=`${speaker}: ${text}\n`
+        dialogueBox.insertAdjacentHTML("beforeend",lineHTML(gmName,text,"gm_dir"))
       }else{
         const narrator=l.startsWith("GM:")
         const parts=narrator?["GM",l.slice(3)]:l.split(":")
@@ -207,38 +196,15 @@
         const text=narrator?parts[1].trim():parts.slice(1).join(":").trim()
         const side=narrator?"gm":(speaker===me?"me":"them")
         dialogueBox.insertAdjacentHTML("beforeend",lineHTML(speaker,text,side))
-        if(!narrator&&personas[speaker]&&!document.querySelector(`[data-tip='${speaker}']`)){
-          const b=dialogueBox.lastElementChild.querySelector(".bubble")
-          b.setAttribute("data-tip",speaker)
-          b.setAttribute("data-tippy-content",personas[speaker])
-          tippy(b,{theme:"light",maxWidth:220})
-        }
-        screenplay+=`${speaker}: ${text}\n`
       }
     })
-    screenplayBox.textContent=screenplay
     dialogueBox.scrollTop=dialogueBox.scrollHeight
-    screenplayBox.scrollTop=screenplayBox.scrollHeight
   }
 
-  const setLoading=f=>{
+  function setLoading(f){
     submitTurnBtn.disabled=startGameBtn.disabled=userInstruction.disabled=f
     submitTurnBtn.textContent=f?"…":"Submit"
     startGameBtn.textContent=f?"…":"Start Game"
-  }
-
-  const endStory=()=>{
-    setLoading(false)
-    instructionArea.classList.add("hidden")
-    gameOverArea.classList.remove("hidden")
-  }
-
-  const reset=()=>{
-    sessionId=null;me=null;personas={};gmName=null;screenplay=""
-    startCard.classList.remove("hidden");gameCard.classList.add("hidden")
-    dialogueBox.innerHTML="";userInstruction.value="";screenplayBox.textContent=""
-    instructionArea.classList.remove("hidden");gameOverArea.classList.add("hidden")
-    phaseIndicator.textContent="Phase: Act I"
   }
 
   // start game
@@ -262,15 +228,10 @@
     }
     fetch("/start_game",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(r=>r.json()).then(res=>{
-      sessionId=res.session_id;me=prof||agentName.value.trim()
-      gmName=res.gm_name
+      sessionId=res.session_id;me=prof||agentName.value.trim();gmName=res.gm_name
       personas=Object.fromEntries(res.agents.map(a=>[a.name,a.persona]))
       startCard.classList.add("hidden");gameCard.classList.remove("hidden")
-      scenarioTitle.textContent=res.scenario_title
-      gmNameEl.textContent=`GM: ${res.gm_name}`
-      initialSetup.textContent=res.initial_setup
-      screenplay=`${res.scenario_title}\n\n${res.initial_setup}\n\n`
-      screenplayBox.textContent=screenplay
+      summaryBox.textContent=res.initial_setup
       setLoading(false)
     }).catch(e=>{alert(e.message);setLoading(false)})
   }
@@ -283,14 +244,23 @@
       session_id:sessionId,instruction:userInstruction.value,agent_name:me})})
     .then(r=>r.json()).then(res=>{
       if(res.dialogue_segment)appendDialogue(res.dialogue_segment)
-      if(res.phase_label)phaseIndicator.textContent="Phase: "+res.phase_label
+      summaryBox.textContent=res.summary
+      phaseIndicator.textContent="Phase: "+res.phase_label
       userInstruction.value=""
-      if(res.phase_label==="Epilogue")endStory()
-      else setLoading(false)
-    }).catch(e=>{setLoading(false);alert(e.message)})
+      if(res.phase_label==="Epilogue")makeStoryBtn.classList.remove("hidden")
+      setLoading(false)
+    }).catch(e=>{alert(e.message);setLoading(false)})
   }
 
-  newGameBtn.onclick=reset
+  /* make story */
+  makeStoryBtn.onclick=()=>{
+    makeStoryBtn.disabled=true;makeStoryBtn.textContent="…"
+    fetch("/make_story",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId})})
+    .then(r=>r.json()).then(j=>{
+    }).finally(()=>{makeStoryBtn.disabled=false;makeStoryBtn.textContent="Make story"})
+  }
+
+  /* keyboard shortcut */
   userInstruction.addEventListener("keydown",e=>{
     if(e.key==="Enter"&&(e.ctrlKey||e.metaKey))submitTurnBtn.click()
   })

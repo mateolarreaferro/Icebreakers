@@ -24,14 +24,12 @@ class Room:
         self.scenario   = next((s for s in scenarios if s["id"] == scenario_id), None)
         if not self.scenario:
             raise ValueError(f"Scenario with id {scenario_id} not found.")
-
         self.dialogue_history: list[str] = []
         self.phase = 0
 
     # prompt builder
     def _build_turn_prompt(self, user_agent: Agent, user_instruction: str):
         phase_name = self.PHASE_NAMES[self.phase]
-
         gm_header = f"### GM persona\n{self.gm['persona']}\n\n"
         common_rules = (
             f"You control **GM** and **all NPCs** (everyone except {user_agent.name}).\n"
@@ -48,10 +46,8 @@ class Room:
             "End the turn with **one** consolidation line:\n"
             "GM_DIRECTION: <concise suggestion for where the story should go next>\n"
         )
-
         system_prompt = gm_header + f"Current phase: **{phase_name}**.\n" + common_rules + format_rule + direction_rule
 
-        # bio & memories
         bio  = get_profile(user_agent.name) or {}
         bio_lines = [
             f"- Home: {bio.get('home')}" if bio.get("home") else "",
@@ -79,28 +75,30 @@ class Room:
         )
         return system_prompt, user_prompt
 
-    # main loop
+    def _summarise(self):
+        prompt = "Briefly summarise in 3-4 sentences what is happening right now:\n\n" + "\n".join(self.dialogue_history)
+        return run_script("You are a concise narrator.", prompt, temperature=0.3, max_tokens=150)
+
+    def full_story(self):
+        prompt = "Turn the following dialogue into a coherent short story:\n\n" + "\n".join(self.dialogue_history)
+        return run_script("You are a creative writer.", prompt, temperature=0.7, max_tokens=1000)
+
     def process_turn(self, user_agent_name: str, user_instruction: str):
         user_agent = next(a for a in self.agents if a.name == user_agent_name)
-
         sys_p, usr_p = self._build_turn_prompt(user_agent, user_instruction)
         raw = run_script(sys_p, usr_p, temperature=0.7).strip()
-
-        # retry once if user-agent didn't speak
         if not re.search(rf"^{re.escape(user_agent.name)}:", raw, re.I | re.M):
             raw = run_script(
                 sys_p,
                 usr_p + f"\n(Previous reply lacked a line for {user_agent.name}.)",
                 temperature=0.7,
             ).strip()
-
         self.dialogue_history.append(raw)
         if self.phase < 3:
             self.phase += 1
-
+        summary = self._summarise()
         return {
             "dialogue_segment": raw,
             "phase_label": self.PHASE_NAMES[self.phase] if self.phase < 4 else "Epilogue",
-            "game_over": False,
-            "outcome": None,
+            "summary": summary,
         }

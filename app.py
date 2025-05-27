@@ -113,14 +113,17 @@ def submit_turn():
         return jsonify({"error": "invalid session id"}), 404
 
     result = room.process_turn(agent_name, user_instruction)
-    if result["game_over"]:
-        lbl = {
-            "lifeboat":"Survivors","bank_heist":"Released",
-            "mars_outpost":"Oxygen Recipients","submarine_leak":"Dive Team",
-            "expedition_blizzard":"Sheltered","time_paradox":"Stabilized",
-        }.get(room.scenario["id"],"Outcome")
-        result["outcome_label"] = lbl
     return jsonify(result)
+
+
+# full story
+@app.post("/make_story")
+def make_story():
+    room = game_sessions.get(request.json.get("session_id"))
+    if not room:
+        return jsonify({"error":"invalid session id"}), 404
+    story = room.full_story()
+    return jsonify({"story": story})
 
 
 # profile create/update
