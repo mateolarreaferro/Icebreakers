@@ -31,8 +31,8 @@ CHATROOM_RULES = [
         "description": "If someone is breaking the rules or making others uncomfortable, report it to a moderator or game master immediately."
     },
     {
-    "id": "rule7",
-    "title": "Keep the Story Moving",
-    "description": "Avoid stalling the game. Stay active, respond within a reasonable time, and help others stay engaged by contributing meaningfully to the scenario."
+        "id": "rule7",
+        "title": "Keep the Story Moving",
+        "description": "Avoid stalling the game. Stay active, respond within a reasonable time, and help others stay engaged by contributing meaningfully to the scenario."
     }
 ]
