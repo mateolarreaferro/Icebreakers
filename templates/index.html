@@ -252,15 +252,17 @@
     }).catch(e=>{alert(e.message);setLoading(false)})
   }
 
-  /* make story */
+  // make story
   makeStoryBtn.onclick=()=>{
     makeStoryBtn.disabled=true;makeStoryBtn.textContent="…"
     fetch("/make_story",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId})})
     .then(r=>r.json()).then(j=>{
+      summaryBox.textContent=j.story
+      makeStoryBtn.classList.add("hidden")
     }).finally(()=>{makeStoryBtn.disabled=false;makeStoryBtn.textContent="Make story"})
   }
 
-  /* keyboard shortcut */
+  //  keyboard shortcut - debug
   userInstruction.addEventListener("keydown",e=>{
     if(e.key==="Enter"&&(e.ctrlKey||e.metaKey))submitTurnBtn.click()
   })
