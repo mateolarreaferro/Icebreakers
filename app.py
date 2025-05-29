@@ -35,7 +35,6 @@ def list_gms():
 def profiles():
     return jsonify(list_profiles())
 
-
 # start a game
 @app.post("/start_game")
 def start_game():
@@ -96,7 +95,6 @@ def start_game():
         "agents": [{"name": a.name, "persona": a.persona} for a in all_agents],
     })
 
-
 # submit a turn
 @app.post("/submit_turn")
 def submit_turn():
@@ -115,7 +113,6 @@ def submit_turn():
     result = room.process_turn(agent_name, user_instruction)
     return jsonify(result)
 
-
 # full story
 @app.post("/make_story")
 def make_story():
@@ -124,7 +121,6 @@ def make_story():
         return jsonify({"error":"invalid session id"}), 404
     story = room.full_story()
     return jsonify({"story": story})
-
 
 # profile create/update
 @app.post("/profile")
@@ -158,7 +154,6 @@ def add_mem():
         return jsonify({"error":"name & text required"}), 400
     add_memory(data["name"], data["text"])
     return jsonify({"ok": True})
-
 
 # markdown download
 @app.post("/download")

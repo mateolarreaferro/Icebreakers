@@ -8,26 +8,28 @@ from storage          import get_profile
 from memory_manager   import relevant
 
 
+# Represents an agent in the game with a name, persona, and optional metadata.
 class Agent:
     def __init__(self, name: str, persona: str, **meta):
-        self.name    = name.strip()
+        self.name = name.strip()
         self.persona = persona.strip()
-        self.meta    = meta
+        self.meta = meta
 
 
 class Room:
-    PHASE_NAMES = ["Act I", "Act II", "Act III", "Epilogue"]
+    PHASE_NAMES = ["Act I", "Act II", "Act III", "Epilogue"] # Gabe, feel free to adapt the structure if you feel it should be better
 
+    # Initializes the Room with a scenario ID, a list of agents, and a GM.
     def __init__(self, scenario_id: str, agents: list[Agent], gm: dict):
-        self.agents     = agents
-        self.gm         = gm
-        self.scenario   = next((s for s in scenarios if s["id"] == scenario_id), None)
+        self.agents = agents
+        self.gm = gm
+        self.scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
         if not self.scenario:
             raise ValueError(f"Scenario with id {scenario_id} not found.")
         self.dialogue_history: list[str] = []
         self.phase = 0
 
-    # prompt builder
+    # Builds the prompt for the turn based on the user agent and user instruction.
     def _build_turn_prompt(self, user_agent: Agent, user_instruction: str):
         phase_name = self.PHASE_NAMES[self.phase]
         gm_header = f"### GM persona\n{self.gm['persona']}\n\n"
@@ -75,14 +77,17 @@ class Room:
         )
         return system_prompt, user_prompt
 
+    # Summarizes the current dialogue history in 3-4 sentences.
     def _summarise(self):
         prompt = "Briefly summarise in 3-4 sentences what is happening right now:\n\n" + "\n".join(self.dialogue_history)
         return run_script("You are a concise narrator.", prompt, temperature=0.3, max_tokens=150)
 
+    # Turns the dialogue history into a coherent short story.
     def full_story(self):
         prompt = "Turn the following dialogue into a coherent short story:\n\n" + "\n".join(self.dialogue_history)
         return run_script("You are a creative writer.", prompt, temperature=0.7, max_tokens=1000)
 
+    # Processes a turn by generating a response based on the user agent's instruction and updates the dialogue history.
     def process_turn(self, user_agent_name: str, user_instruction: str):
         user_agent = next(a for a in self.agents if a.name == user_agent_name)
         sys_p, usr_p = self._build_turn_prompt(user_agent, user_instruction)

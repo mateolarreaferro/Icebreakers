@@ -8,10 +8,8 @@ Simple profile-memory store
 """
 
 from settings import OPENAI_API_KEY
-
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
-
 from tinydb import TinyDB, Query
 from threading import Lock
 import os
@@ -23,21 +21,24 @@ _lock = Lock()
 
 _emb = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
+# Returns the directory path that holds an agent’s Chroma index.
 def _vs_path(agent: str) -> str:
     """Directory that holds an agent’s Chroma index"""
     return f".vs_{agent}"
 
+# Loads (or implicitly creates) the agent’s vector store for memory retrieval.
 def _load_vs(agent: str) -> Chroma:
     """Load (or implicitly create) the agent’s vector store"""
     return Chroma(persist_directory=_vs_path(agent), embedding_function=_emb)
 
-#  public API
+# Appends a raw memory string to the database and updates the corresponding vector store.
 def add_memory(agent: str, text: str) -> None:
     """Append a raw memory string and update the vector store"""
     with _lock:
         _db.insert({"agent": agent, "text": text})
         _load_vs(agent).add_texts([text])
 
+# retrieves up to *k* memories that are most similar to a given cue for a specified agent, using a vector store
 def relevant(agent: str, cue: str, k: int = 3) -> list[str]:
     """
     Return up to *k* memories most similar to `cue`.
