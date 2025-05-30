@@ -185,5 +185,33 @@ def download():
         mimetype="text/markdown",
     )
 
+# Extras
+
+# Summarization endpoint
+@app.route("/summary/<session_id>", methods=["GET"])
+def summary(session_id):
+    room = game_sessions.get(session_id)
+    if not room:
+        return jsonify({"error": "invalid session id"}), 404
+    return jsonify({"summary": room.summarise()})
+
+# Dialogue history retrieval endpoint
+@app.route("/dialogue/<session_id>", methods=["GET"])
+def dialogue(session_id):
+    room = game_sessions.get(session_id)
+    if not room:
+        return jsonify({"error": "invalid session id"}), 404
+    return jsonify({"dialogue_history": room.dialogue_history})
+
+# Current phase retrieval endpoint
+@app.route("/phase/<session_id>", methods=["GET"])
+def phase(session_id):
+    room = game_sessions.get(session_id)
+    if not room:
+        return jsonify({"error": "invalid session id"}), 404
+    idx = min(room.phase, len(Room.PHASE_NAMES) - 1)
+    return jsonify({"current_phase": Room.PHASE_NAMES[idx]})
+
+
 if __name__ == "__main__":
     app.run(debug=True)
