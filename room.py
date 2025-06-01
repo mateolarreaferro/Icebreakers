@@ -17,9 +17,7 @@ class Agent:
 
 
 class Room:
-    PHASE_NAMES = ["Act I", "Act II", "Act III", "Epilogue"] # Gabe, feel free to adapt the structure if you feel it should be better
-
-    # Initializes the Room with a scenario ID, a list of agents, and a GM.
+    PHASE_NAMES = ["Act I", "Act II", "Act III", "Epilogue"] # Gabe, feel free to adapt the structure if you feel it should be better    # Initializes the Room with a scenario ID, a list of agents, and a GM.
     def __init__(self, scenario_id: str, agents: list[Agent], gm: dict):
         self.agents = agents
         self.gm = gm
@@ -28,8 +26,9 @@ class Room:
             raise ValueError(f"Scenario with id {scenario_id} not found.")
         self.dialogue_history: list[str] = []
         self.phase = 0
-
-    # Builds the prompt for the turn based on the user agent and user instruction.
+        self.game_over = False
+        self.outcome = []
+        # Builds the prompt for the turn based on the user agent and user instruction.
     def _build_turn_prompt(self, user_agent: Agent, user_instruction: str):
         phase_name = self.PHASE_NAMES[self.phase]
         gm_header = f"### GM persona\n{self.gm['persona']}\n\n"
@@ -85,9 +84,7 @@ class Room:
     # Turns the dialogue history into a coherent short story.
     def full_story(self):
         prompt = "Turn the following dialogue into a coherent short story:\n\n" + "\n".join(self.dialogue_history)
-        return run_script("You are a creative writer.", prompt, temperature=0.7, max_tokens=1000)
-
-    # Processes a turn by generating a response based on the user agent's instruction and updates the dialogue history.
+        return run_script("You are a creative writer.", prompt, temperature=0.7, max_tokens=1000)    # Processes a turn by generating a response based on the user agent's instruction and updates the dialogue history.
     def process_turn(self, user_agent_name: str, user_instruction: str):
         user_agent = next(a for a in self.agents if a.name == user_agent_name)
         sys_p, usr_p = self._build_turn_prompt(user_agent, user_instruction)
@@ -101,9 +98,17 @@ class Room:
         self.dialogue_history.append(raw)
         if self.phase < 3:
             self.phase += 1
+        else:
+            # If we're already at or past phase 3 (Epilogue), mark the game as over
+            self.game_over = True
+            # Generate outcome - extract character names from the final scene
+            # For simplicity, use all agent names as outcome
+            self.outcome = [agent.name for agent in self.agents]
+        
         summary = self._summarise()
         return {
             "dialogue_segment": raw,
             "phase_label": self.PHASE_NAMES[self.phase] if self.phase < 4 else "Epilogue",
             "summary": summary,
+            "game_over": self.game_over
         }

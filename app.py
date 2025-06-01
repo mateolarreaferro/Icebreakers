@@ -1,5 +1,6 @@
 import io, random, uuid, re
 from flask import Flask, render_template, request, jsonify, send_file
+from flask_cors import CORS
 
 from storage import upsert_profile, get_profile, list_profiles
 from memory_manager import add_memory, relevant
@@ -10,7 +11,7 @@ from llm_utils import run_script
 from room import Agent, Room
 
 app = Flask(__name__)
-
+CORS(app)  # Enable CORS for all routes
 
 # routes
 game_sessions: dict[str, Room] = {}
@@ -113,6 +114,44 @@ def submit_turn():
     result = room.process_turn(agent_name, user_instruction)
     return jsonify(result)
 
+# get room list
+@app.get("/rooms")
+def list_rooms():
+    room_list = []
+    for session_id, room in game_sessions.items():
+        room_info = {
+            "session_id": session_id,
+            "scenario_title": room.scenario["title"],
+            "gm_name": room.gm["name"],
+            "phase": room.phase,
+            "agents": [{"name": a.name, "persona": a.persona} for a in room.agents],
+            "game_over": room.game_over,
+        }
+        if room.game_over:
+            room_info["outcome"] = room.outcome
+        room_list.append(room_info)
+    return jsonify(room_list)
+
+# join room
+@app.post("/join_room")
+def join_room():
+    data = request.json
+    session_id = data.get("session_id")
+    user_name = data.get("name")
+    user_persona = data.get("persona")
+
+    if not all([session_id, user_name, user_persona]):
+        return jsonify({"error": "missing session_id, name, or persona"}), 400
+
+    room = game_sessions.get(session_id)
+    if not room:
+        return jsonify({"error": "invalid session id"}), 404
+
+    user_agent = Agent(user_name, user_persona)
+    room.agents.append(user_agent)
+
+    return jsonify({"ok": True})
+
 # full story
 @app.post("/make_story")
 def make_story():
@@ -184,6 +223,60 @@ def download():
         download_name=f"{room.scenario['id']}_simulation.md",
         mimetype="text/markdown",
     )
+
+# writing assistant
+@app.post("/writing_assistant")
+def writing_assistant():
+    data = request.json
+    session_id = data.get("session_id")
+    user_name = data.get("user_name")
+    draft_message = data.get("draft_message")
+    
+    if not all([session_id, user_name, draft_message]):
+        return jsonify({"error": "missing session_id, user_name, or draft_message"}), 400
+
+    room = game_sessions.get(session_id)
+    if not room:
+        return jsonify({"error": "invalid session id"}), 404
+    
+    # Get the user's character information if they're in the game
+    user_agent = next((a for a in room.agents if a.name.lower() == user_name.lower()), None)
+    user_persona = user_agent.persona if user_agent else "unknown player"
+    
+    # Get dialogue history context
+    recent_history = room.dialogue_history[-5:] if room.dialogue_history and len(room.dialogue_history) > 0 else []
+    history_context = "\n".join(recent_history) if recent_history else "No dialogue history yet."
+    
+    # Generate a response from the writing assistant
+    system_prompt = f"""
+    You are a helpful writing assistant for a collaborative narrative game. 
+    The player {user_name} is roleplaying as: "{user_persona}".
+    
+    You should help the player write effective, in-character messages that:
+    1. Stay true to their character's persona
+    2. Maintain story continuity and reference past events when appropriate
+    3. Create interesting narrative developments
+    4. Encourage positive player interactions
+    
+    Provide specific suggestions for how to improve their message. Be concise and constructive.
+    Don't completely rewrite their message, but offer targeted improvements.
+    """
+    
+    user_prompt = f"""
+    Recent dialogue history:
+    {history_context}
+    
+    {user_name}'s draft message:
+    "{draft_message}"
+    
+    Please provide feedback and suggestions for improving this message:
+    """
+    
+    assistant_response = run_script(system_prompt, user_prompt, temperature=0.7, max_tokens=500)
+    
+    return jsonify({
+        "response": assistant_response.strip()
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)
