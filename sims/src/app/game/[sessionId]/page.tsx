@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SERVER_ADDRESS } from '../../api/server';
 
@@ -29,8 +29,17 @@ interface AssistantMessage {
   timestamp: Date;
 }
 
+interface User {
+  google_session_id: string;
+  display_name: string;
+  profile_picture_url?: string;
+  total_messages: number;
+  rooms_joined: number;
+}
+
 export default function GamePage() {
   const params = useParams();
+  const router = useRouter();
   const sessionId = params.sessionId as string;
   
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -40,6 +49,7 @@ export default function GamePage() {
   const [submitting, setSubmitting] = useState(false);
   const [dialogueHistory, setDialogueHistory] = useState<string[]>([]);
   const [playerName, setPlayerName] = useState<string>('Guest Player');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   // Group chat messages
   const [groupMessages, setGroupMessages] = useState<Message[]>([]);
@@ -50,6 +60,21 @@ export default function GamePage() {
   const [draftMessage, setDraftMessage] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
   const [assistantSubmitting, setAssistantSubmitting] = useState(false);
+
+  // Load user data from localStorage
+  useEffect(() => {
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setCurrentUser(userData);
+        setPlayerName(userData.display_name);
+      } catch (error) {
+        console.error('Error parsing stored user data:', error);
+        localStorage.removeItem('currentUser');
+      }
+    }
+  }, []);
 
   // Fetch initial game state
   useEffect(() => {
@@ -228,7 +253,7 @@ export default function GamePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: sessionId,
-          user_name: playerName,
+          display_name: playerName,
           draft_message: assistantInput
         }),
       });
@@ -306,22 +331,22 @@ export default function GamePage() {
 
   if (loading) {
     return (
-      <div className="bg-violet-100 min-h-screen flex items-center justify-center">
-        <div className="text-xl font-medium text-violet-700">Loading game...</div>
+      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 min-h-screen flex items-center justify-center p-4">
+        <div className="text-xl font-medium text-white">Loading game...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-violet-100 min-h-screen p-6">
-        <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-2xl font-bold text-red-500 mb-4">Error</h1>
+      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 min-h-screen p-6">
+        <div className="max-w-4xl mx-auto bg-gray-50 rounded-lg shadow-lg p-6">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-            {error}
+            <p className="text-gray-800">{error}</p>
           </div>
           <Link href="/home">
-            <button className="bg-violet-400 hover:bg-violet-500 text-white py-2 px-4 rounded">
+            <button className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
               Back to Home
             </button>
           </Link>
@@ -332,12 +357,12 @@ export default function GamePage() {
 
   if (!gameState) {
     return (
-      <div className="bg-violet-100 min-h-screen p-6">
-        <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-2xl font-bold text-violet-700 mb-4">Game Not Found</h1>
-          <p className="mb-4">This game session doesn't exist or has been removed.</p>
+      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 min-h-screen p-6">
+        <div className="max-w-4xl mx-auto bg-gray-50 rounded-lg shadow-lg p-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Game Not Found</h1>
+          <p className="mb-4 text-gray-800">This game session doesn't exist or has been removed.</p>
           <Link href="/home">
-            <button className="bg-violet-400 hover:bg-violet-500 text-white py-2 px-4 rounded">
+            <button className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
               Back to Home
             </button>
           </Link>
@@ -347,45 +372,53 @@ export default function GamePage() {
   }
 
   return (
-    <div className="bg-violet-100 min-h-screen p-4">
-      <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
+    <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 min-h-screen p-6">
+      <div className="max-w-6xl mx-auto bg-gray-50 rounded-lg shadow-lg">
         <header className="p-4 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-violet-700 mb-2">{gameState.scenario_title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{gameState.scenario_title}</h1>
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
               Game Master: {gameState.gm_name} | Phase: {gameState.phase}
             </div>
-            <div className="flex items-center">
-              <div className="mr-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                </svg>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <div className="mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                  </svg>
+                </div>
+                <div className="text-sm font-medium">{gameState.agents.length} Players</div>
               </div>
-              <div className="text-sm font-medium">{gameState.agents.length} Players</div>
+              <button
+                onClick={() => router.push('/home')}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
+              >
+                Back to Home
+              </button>
             </div>
           </div>
         </header>
         
         {gameState.game_over ? (
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 m-4">
-            <h3 className="font-bold">Game Over</h3>
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 m-4">
+            <h3 className="font-bold text-gray-900">Game Over</h3>
             {gameState.outcome && (
-              <div>Outcome: {gameState.outcome.join(", ")}</div>
+              <div className="text-gray-800">Outcome: {gameState.outcome.join(", ")}</div>
             )}
           </div>
         ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
           {/* Left sidebar - Character list */}
-          <div className="col-span-1 bg-gray-50 p-3 rounded-lg h-[70vh] overflow-auto">
-            <h2 className="text-lg font-semibold mb-3 text-violet-600">Characters</h2>
+          <div className="col-span-1 bg-white p-3 rounded-lg h-[70vh] overflow-auto">
+            <h2 className="text-lg font-semibold mb-3 text-gray-900">Characters</h2>
             <div className="space-y-2">
               {gameState.agents.map((agent) => (
                 <div 
                   key={agent.name}
-                  className="p-3 rounded-lg bg-white shadow-sm"
+                  className="p-3 rounded-lg bg-gray-50 shadow-sm"
                 >
-                  <div className="font-medium">{agent.name}</div>
+                  <div className="font-medium text-gray-900">{agent.name}</div>
                   <div className="text-sm text-gray-600 truncate">{agent.persona.substring(0, 60)}...</div>
                 </div>
               ))}
@@ -397,12 +430,12 @@ export default function GamePage() {
             <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Main chat area */}
               <div className={`${showAssistant ? 'md:col-span-1' : 'md:col-span-2'} flex flex-col`}>
-                <h2 className="text-lg font-semibold mb-2 text-violet-600">Group Chat</h2>
-                <div className="flex-grow bg-gray-50 p-4 rounded-lg overflow-y-auto mb-3">
+                <h2 className="text-lg font-semibold mb-2 text-gray-900">Group Chat</h2>
+                <div className="flex-grow bg-white p-4 rounded-lg overflow-y-auto mb-3">
                   {groupMessages.length > 0 ? (
                     <div className="space-y-3">
                       {groupMessages.map((message, index) => (
-                        <div key={index} className={`${message.isAgent ? 'text-gray-700' : 'text-violet-700'}`}>
+                        <div key={index} className={`${message.isAgent ? 'text-gray-700' : 'text-blue-700'}`}>
                           <span className="font-semibold">{message.sender}:</span> {message.content}
                         </div>
                       ))}
@@ -492,7 +525,7 @@ export default function GamePage() {
                         type="text"
                         value={assistantInput}
                         onChange={(e) => setAssistantInput(e.target.value)}
-                        className="flex-1 p-2 border rounded"
+                        className="flex-1 p-2 border rounded text-gray-900"
                         placeholder="Draft your message or ask for help..."
                         disabled={assistantSubmitting}
                       />
@@ -521,7 +554,7 @@ export default function GamePage() {
                         <textarea
                           value={draftMessage}
                           onChange={(e) => setDraftMessage(e.target.value)}
-                          className="w-full p-2 border rounded mb-2"
+                          className="w-full p-2 border rounded mb-2 text-gray-900"
                           placeholder="Draft your message here..."
                           rows={3}
                         />
@@ -569,7 +602,7 @@ export default function GamePage() {
                       </button>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-600">
                     Playing as: {playerName}
                   </div>
                 </div>
@@ -580,13 +613,13 @@ export default function GamePage() {
                       type="text"
                       value={groupInput}
                       onChange={(e) => setGroupInput(e.target.value)}
-                      className="flex-1 p-2 border rounded"
+                      className="flex-1 p-2 border rounded text-gray-900"
                       placeholder="Type your message..."
                       disabled={submitting}
                     />
                     <button
                       type="submit"
-                      className="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
                       disabled={submitting || !groupInput.trim()}
                     >
                       {submitting ? 'Sending...' : 'Send'}
@@ -601,7 +634,7 @@ export default function GamePage() {
         {gameState.game_over && (
           <div className="p-4 flex justify-center">
             <Link href="/home">
-              <button className="bg-violet-400 hover:bg-violet-500 text-white py-2 px-6 rounded">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded">
                 Back to Home
               </button>
             </Link>

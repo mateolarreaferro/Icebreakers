@@ -9,12 +9,22 @@ from scenarios import scenarios
 from gm_profiles import gm_list
 from llm_utils import run_script
 from room import Agent, Room
+from icebreaker_room import IcebreakerRoom, Participant
+from user_db import (
+    create_or_update_user, get_user, update_user_stats, 
+    set_user_ready_status, get_room_ready_status, 
+    join_user_to_room, leave_user_from_room, get_user_stats, init_user_db
+)
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# routes
+# Initialize the user database
+init_user_db()
+
+# Storage for both legacy game sessions and new icebreaker rooms
 game_sessions: dict[str, Room] = {}
+icebreaker_rooms: dict[str, IcebreakerRoom] = {}
 
 # index.html
 @app.route("/")
@@ -229,54 +239,397 @@ def download():
 def writing_assistant():
     data = request.json
     session_id = data.get("session_id")
-    user_name = data.get("user_name")
+    display_name = data.get("display_name")
     draft_message = data.get("draft_message")
+    assistance_type = data.get("assistance_type", "general")  # general, translation, tone
     
-    if not all([session_id, user_name, draft_message]):
-        return jsonify({"error": "missing session_id, user_name, or draft_message"}), 400
+    if not all([session_id, display_name, draft_message]):
+        return jsonify({"error": "missing session_id, display_name, or draft_message"}), 400
 
-    room = game_sessions.get(session_id)
+    # Check both legacy rooms and icebreaker rooms
+    room = game_sessions.get(session_id) or icebreaker_rooms.get(session_id)
     if not room:
         return jsonify({"error": "invalid session id"}), 404
     
-    # Get the user's character information if they're in the game
-    user_agent = next((a for a in room.agents if a.name.lower() == user_name.lower()), None)
-    user_persona = user_agent.persona if user_agent else "unknown player"
+    # Different prompts based on assistance type
+    if assistance_type == "translation":
+        system_prompt = "You are a translation assistant. Help translate or clarify the meaning of text. Be concise and helpful."
+        user_prompt = f'Please help with: "{draft_message}"'
+    elif assistance_type == "tone":
+        system_prompt = "You are a tone advisor. Suggest how to adjust the tone of messages to be more friendly, clear, or appropriate for college students in a social setting. Be brief and specific."
+        user_prompt = f'How can I improve the tone of: "{draft_message}"'
+    else:
+        # General conversation help for icebreakers
+        system_prompt = """You are a helpful conversation assistant for college icebreaker activities. Give brief, practical suggestions to help students engage better in group conversations. Focus on:
+- Making shy students more comfortable participating
+- Encouraging genuine, interesting responses
+- Building on what others have shared
+- Being inclusive and friendly
+
+Be concise and natural in your advice. Don't be overly formal or instructional."""
+        
+        # Get recent context from the room
+        recent_context = "Just starting to chat."
+        if hasattr(room, '_icebreaker_room'):
+            recent_messages = room._icebreaker_room.chat_history[-3:]
+            if recent_messages:
+                recent_context = "; ".join([f"{msg['sender_name']}: {msg['content'][:50]}" for msg in recent_messages])
+        elif hasattr(room, 'chat_history'):
+            recent_messages = room.chat_history[-3:]
+            if recent_messages:
+                recent_context = "; ".join([f"{msg['sender_name']}: {msg['content'][:50]}" for msg in recent_messages])
+        
+        user_prompt = f"""Recent conversation: {recent_context}
+
+Your draft: "{draft_message}"
+
+Quick suggestion:"""
     
-    # Get dialogue history context
-    recent_history = room.dialogue_history[-5:] if room.dialogue_history and len(room.dialogue_history) > 0 else []
-    history_context = "\n".join(recent_history) if recent_history else "No dialogue history yet."
+    try:
+        assistant_response = run_script(system_prompt, user_prompt, temperature=0.7, max_tokens=150)
+        
+        # Clean up any bold formatting and excessive formality
+        cleaned_response = re.sub(r'\*\*(.*?)\*\*', r'\1', assistant_response.strip())
+        cleaned_response = re.sub(r'\*(.*?)\*', r'\1', cleaned_response)
+        
+        return jsonify({
+            "response": cleaned_response
+        })
+    except Exception as e:
+        return jsonify({
+            "response": "I'm having trouble right now. Your message looks good - just be yourself!"
+        })
+
+# ===== NEW ICEBREAKER ENDPOINTS =====
+
+# User authentication/creation
+@app.post("/auth/google")
+def google_auth():
+    try:
+        data = request.json
+        google_session_id = data.get("google_session_id")
+        display_name = data.get("display_name")
+        profile_picture_url = data.get("profile_picture_url")
+        
+        if not all([google_session_id, display_name]):
+            return jsonify({"error": "missing google_session_id or display_name"}), 400
+        
+        success = create_or_update_user(google_session_id, display_name, profile_picture_url)
+        if not success:
+            return jsonify({"error": "Failed to create/update user"}), 500
+            
+        user = get_user(google_session_id)
+        if not user:
+            return jsonify({"error": "Failed to retrieve user data"}), 500
+        
+        return jsonify({"user": user})
+    except Exception as e:
+        print(f"Error in google_auth: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+# Get user profile
+@app.get("/user/<google_session_id>")
+def get_user_profile(google_session_id):
+    user = get_user(google_session_id)
+    if not user:
+        return jsonify({"error": "user not found"}), 404
+    return jsonify({"user": user})
+
+# Create new icebreaker room
+@app.post("/create_icebreaker_room")
+def create_icebreaker_room():
+    data = request.json
+    room_title = data.get("room_title", "Icebreaker Chat")
+    display_name = data.get("display_name", "Anonymous")
+    google_session_id = data.get("google_session_id")
+    max_participants = data.get("max_participants", 12)
     
-    # Generate a response from the writing assistant
-    system_prompt = f"""
-    You are a helpful writing assistant for a collaborative narrative game. 
-    The player {user_name} is roleplaying as: "{user_persona}".
+    if not display_name:
+        return jsonify({"error": "display_name required"}), 400
     
-    You should help the player write effective, in-character messages that:
-    1. Stay true to their character's persona
-    2. Maintain story continuity and reference past events when appropriate
-    3. Create interesting narrative developments
-    4. Encourage positive player interactions
+    if not google_session_id:
+        return jsonify({"error": "google_session_id required"}), 400
     
-    Provide specific suggestions for how to improve their message. Be concise and constructive.
-    Don't completely rewrite their message, but offer targeted improvements.
-    """
+    # Create the room
+    room = IcebreakerRoom(
+        room_title=room_title,
+        facilitator_name="Icebreaker Bot",
+        max_participants=max_participants
+    )
     
-    user_prompt = f"""
-    Recent dialogue history:
-    {history_context}
+    # Add creator as first participant
+    creator = Participant(
+        google_session_id=google_session_id,
+        display_name=display_name,
+        profile_picture=data.get("profile_picture_url")
+    )
     
-    {user_name}'s draft message:
-    "{draft_message}"
+    if not room.add_participant(creator):
+        return jsonify({"error": "Failed to add creator to room"}), 500
     
-    Please provide feedback and suggestions for improving this message:
-    """
+    # Generate initial icebreaker
+    try:
+        initial_icebreaker = room.generate_icebreaker()
+        room.add_icebreaker_message(initial_icebreaker)
+    except Exception as e:
+        print(f"Failed to generate initial icebreaker: {e}")
+        # Continue without initial icebreaker
     
-    assistant_response = run_script(system_prompt, user_prompt, temperature=0.7, max_tokens=500)
+    # Store the room
+    icebreaker_rooms[room.session_id] = room
+    
+    # Update user stats if authenticated
+    try:
+        stats_updated = update_user_stats(google_session_id, room_joined=True)
+        room_joined = join_user_to_room(google_session_id, room.session_id)
+        
+        if not stats_updated or not room_joined:
+            print(f"Warning: Failed to update user stats for {google_session_id}")
+    except Exception as e:
+        print(f"Error updating user stats: {e}")
+        # Continue anyway - room creation shouldn't fail due to stats issues
     
     return jsonify({
-        "response": assistant_response.strip()
+        "session_id": room.session_id,
+        "room_title": room.room_title,
+        "participants": [p.to_dict() for p in room.participants],
+        "current_icebreaker": room.current_icebreaker,
+        "room_state": room.get_room_state()
     })
+
+# Join icebreaker room
+@app.post("/join_icebreaker_room")
+def join_icebreaker_room():
+    data = request.json
+    session_id = data.get("session_id")
+    display_name = data.get("display_name")
+    google_session_id = data.get("google_session_id")
+    profile_picture_url = data.get("profile_picture_url")
+    
+    if not all([session_id, display_name, google_session_id]):
+        return jsonify({"error": "missing session_id, display_name, or google_session_id"}), 400
+    
+    room = icebreaker_rooms.get(session_id)
+    if not room:
+        return jsonify({"error": "room not found"}), 404
+    
+    if not room.is_active:
+        return jsonify({"error": "room is no longer active"}), 400
+    
+    # Check if user is already in the room
+    existing_participant = room.get_participant(google_session_id)
+    if existing_participant:
+        # User is already in room, just return the current state
+        return jsonify({
+            "success": True,
+            "message": "Already in room",
+            "room_state": room.get_room_state()
+        })
+    
+    # Create participant
+    participant = Participant(
+        google_session_id=google_session_id,
+        display_name=display_name,
+        profile_picture=profile_picture_url
+    )
+    
+    # Try to add participant
+    if not room.add_participant(participant):
+        if len(room.participants) >= room.max_participants:
+            return jsonify({"error": "room is full"}), 400
+        else:
+            return jsonify({"error": "failed to add participant"}), 400
+    
+    # Update user stats
+    update_user_stats(google_session_id, room_joined=True)
+    join_user_to_room(google_session_id, session_id)
+    
+    return jsonify({
+        "success": True,
+        "room_state": room.get_room_state()
+    })
+
+# Send message to icebreaker room
+@app.post("/send_icebreaker_message")
+def send_icebreaker_message():
+    data = request.json
+    session_id = data.get("session_id")
+    google_session_id = data.get("google_session_id")
+    message_content = data.get("message")
+    
+    if not all([session_id, google_session_id, message_content]):
+        return jsonify({"error": "missing required fields"}), 400
+    
+    room = icebreaker_rooms.get(session_id)
+    if not room:
+        return jsonify({"error": "room not found"}), 404
+    
+    # Add the message
+    message = room.add_message(google_session_id, message_content)
+    if "error" in message:
+        return jsonify(message), 400
+    
+    # Update user stats
+    update_user_stats(google_session_id, message_sent=True)
+    
+    # Check if we should generate a new icebreaker (timer expired)
+    try:
+        new_icebreaker = room.safe_generate_new_icebreaker()
+        if new_icebreaker:
+            room.add_system_message("🎉 New icebreaker generated! Time for a fresh topic.")
+    except Exception as e:
+        print(f"Failed to auto-generate icebreaker: {e}")
+    
+    return jsonify({
+        "message": message,
+        "room_state": room.get_room_state()
+    })
+
+# Set ready status
+@app.post("/set_ready_status")
+def set_ready_status():
+    data = request.json
+    session_id = data.get("session_id")
+    google_session_id = data.get("google_session_id")
+    is_ready = data.get("is_ready", False)
+    
+    if not all([session_id, google_session_id]):
+        return jsonify({"error": "missing session_id or google_session_id"}), 400
+    
+    room = icebreaker_rooms.get(session_id)
+    if not room:
+        return jsonify({"error": "room not found"}), 404
+    
+    result = room.set_participant_ready(google_session_id, is_ready)
+    if "error" in result:
+        return jsonify(result), 400
+    
+    # Store in database for persistence
+    set_user_ready_status(session_id, google_session_id, is_ready)
+    
+    # If not everyone was ready and a new icebreaker was generated, include room state
+    if result.get("new_icebreaker_generated"):
+        result["room_state"] = room.get_room_state()
+    
+    return jsonify(result)
+
+# Get icebreaker rooms list
+@app.get("/icebreaker_rooms")
+def list_icebreaker_rooms():
+    rooms_list = []
+    for room in icebreaker_rooms.values():
+        if room.is_active:
+            rooms_list.append({
+                "session_id": room.session_id,
+                "room_title": room.room_title,
+                "participant_count": len(room.participants),
+                "max_participants": room.max_participants,
+                "activity_type": room.activity_type,
+                "created_at": room.created_at.isoformat(),
+                "has_space": len(room.participants) < room.max_participants
+            })
+    
+    # Sort by creation time (newest first)
+    rooms_list.sort(key=lambda x: x["created_at"], reverse=True)
+    return jsonify(rooms_list)
+
+# Get room state
+@app.get("/icebreaker_room/<session_id>")
+def get_icebreaker_room(session_id):
+    room = icebreaker_rooms.get(session_id)
+    if not room:
+        return jsonify({"error": "room not found"}), 404
+    
+    # Check if we should auto-generate a new icebreaker (safe method prevents duplicates)
+    try:
+        new_icebreaker = room.safe_generate_new_icebreaker()
+        if new_icebreaker:
+            room.add_system_message("🎉 New icebreaker generated! Everyone's ready status has been reset.")
+    except Exception as e:
+        print(f"Failed to auto-generate icebreaker: {e}")
+    
+    return jsonify(room.get_room_state())
+
+# Force generate new icebreaker (for testing or manual control)
+@app.post("/generate_icebreaker")
+def generate_icebreaker():
+    data = request.json
+    session_id = data.get("session_id")
+    
+    # Check both legacy and new rooms
+    room = icebreaker_rooms.get(session_id)
+    if not room:
+        # Legacy support
+        legacy_room = game_sessions.get(session_id)
+        if legacy_room and hasattr(legacy_room, '_icebreaker_room'):
+            room = legacy_room._icebreaker_room
+    
+    if not room:
+        return jsonify({"error": "room not found"}), 404
+    
+    try:
+        new_icebreaker = room.generate_icebreaker()
+        room.add_icebreaker_message(new_icebreaker)
+        
+        return jsonify({
+            "icebreaker": new_icebreaker,
+            "room_state": room.get_room_state()
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate icebreaker: {str(e)}"}), 500
+
+# Votekick endpoints
+@app.post("/start_votekick")
+def start_votekick():
+    try:
+        data = request.json
+        session_id = data.get("session_id")
+        initiator_id = data.get("initiator_id") 
+        target_id = data.get("target_id")
+        reason = data.get("reason", "")
+        
+        if not all([session_id, initiator_id, target_id]):
+            return jsonify({"error": "missing required fields"}), 400
+        
+        room = icebreaker_rooms.get(session_id)
+        if not room:
+            return jsonify({"error": "room not found"}), 404
+        
+        result = room.start_votekick(initiator_id, target_id, reason)
+        
+        if "error" in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error starting votekick: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.post("/vote_on_kick")
+def vote_on_kick():
+    try:
+        data = request.json
+        session_id = data.get("session_id")
+        voter_id = data.get("voter_id")
+        target_id = data.get("target_id") 
+        vote = data.get("vote")  # True for yes, False for no
+        
+        if not all([session_id, voter_id, target_id]) or vote is None:
+            return jsonify({"error": "missing required fields"}), 400
+        
+        room = icebreaker_rooms.get(session_id)
+        if not room:
+            return jsonify({"error": "room not found"}), 404
+        
+        result = room.vote_on_kick(voter_id, target_id, vote)
+        
+        if "error" in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error voting on kick: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,108 +1,200 @@
 'use client';
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import SettingsIcon from '../components/SettingsIcon';
-import StartCard from '../components/StartCard';
-import GameCard from '../components/GameCard';
-
-import Chat from '../components/Chat';
+import React, { useState, useEffect } from 'react';
+import AuthComponent from '../components/AuthComponent';
+import RoomBrowser from '../components/RoomBrowser';
+import CreateRoom from '../components/CreateRoom';
+import IcebreakerRoom from '../components/IcebreakerRoom';
+import AIAssistant from '../components/AIAssistant';
 import { SERVER_ADDRESS } from '../api/server';
 
-interface Room {
-  session_id: string;
-  scenario_title: string;
-  gm_name: string;
-  phase: string;
-  agents: Array<{name: string, persona: string}>;
-  game_over: boolean;
-  outcome?: string[];
+interface User {
+  google_session_id: string;
+  display_name: string;
+  profile_picture_url?: string;
+  total_messages: number;
+  rooms_joined: number;
 }
 
-
+type ViewState = 'auth' | 'browse' | 'create' | 'room';
 
 export default function HomePage() {
-    const [rooms, setRooms] = useState<Room[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentView, setCurrentView] = useState<ViewState>('auth');
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [showAssistant, setShowAssistant] = useState(false);
 
-    useEffect(() => {
-        const fetchRooms = async () => {
-            try {
-                setLoading(true);
-                const response = await fetch(`http://${SERVER_ADDRESS}/rooms`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch rooms');
-                }
-                const data = await response.json();
-                setRooms(data);
-                setError(null);
-            } catch (err) {
-                setError('Failed to load active rooms');
-                console.error('Error fetching rooms:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
+  // Check for existing user data on page load
+  useEffect(() => {
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setCurrentUser(userData);
+        setCurrentView('browse');
+      } catch (error) {
+        console.error('Error parsing stored user data:', error);
+        localStorage.removeItem('currentUser');
+      }
+    }
+  }, []);
 
-        fetchRooms();
-        // Optionally set up polling to refresh rooms periodically
-        const intervalId = setInterval(fetchRooms, 10000); // Every 10 seconds
-        
-        return () => clearInterval(intervalId);
-    }, []);
+  const handleAuthSuccess = (user: User) => {
+    setCurrentUser(user);
+    setCurrentView('browse');
+  };
 
-    return (
-        <div className="bg-violet-100 min-h-screen">
-            <header className='flex justify-end p-4'>
-                <SettingsIcon/>
-            </header>
-            <div className="flex justify-between">
+  const handleJoinRoom = async (sessionId: string) => {
+    if (!currentUser) return;
 
-                {/* Active Rooms */}
-                <div className="bg-violet-200 overflow-y-auto w-1/2 h-130 shadow-md rounded-lg ml-20 p-4 space-y-4">
-                    <h1 className="font-serif text-xl font-bold text-violet-500">
-                        {loading ? 'Loading rooms...' : 'Active Rooms'}
-                    </h1>
-                    
-                    {error && (
-                        <div className="text-red-500 p-2 bg-red-100 rounded">
-                            {error}
-                        </div>
-                    )}
-                    
-                    {!loading && rooms.length === 0 && !error && (
-                        <div className="p-2">
-                            No active rooms available. Start a new game!
-                        </div>
-                    )}
-                    
-                    {rooms.map((room) => (
-                        <Chat 
-                            key={room.session_id} 
-                            Name={room.scenario_title} 
-                            players={room.agents.length} 
-                            sessionId={room.session_id}
-                            gameOver={room.game_over}
-                        />
-                    ))}
-                </div>                {/* Button to Start New Game */}
-                <div className="mr-20 flex flex-col items-center justify-center">
-                    <Link href="/gamePage">
-                        <div className="bg-violet-500 hover:bg-violet-600 text-white py-4 px-8 rounded-lg shadow-lg transition-all hover:shadow-xl transform hover:-translate-y-1 flex flex-col items-center space-y-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" />
-                            </svg>
-                            <span className="text-lg font-medium">Enter Game Lobby</span>
-                            <span className="text-sm text-white/80">Create or join a game</span>
-                        </div>
-                    </Link>
+    try {
+      // Join the room via API
+      const response = await fetch(`http://${SERVER_ADDRESS}/join_icebreaker_room`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          display_name: currentUser.display_name,
+          google_session_id: currentUser.google_session_id,
+          profile_picture_url: currentUser.profile_picture_url
+        })
+      });
+
+      if (response.ok) {
+        setCurrentRoomId(sessionId);
+        setCurrentView('room');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to join room');
+      }
+    } catch (err) {
+      console.error('Error joining room:', err);
+      alert('Failed to join room');
+    }
+  };
+
+  const handleCreateRoom = () => {
+    setCurrentView('create');
+  };
+
+  const handleRoomCreated = (sessionId: string) => {
+    setCurrentRoomId(sessionId);
+    setCurrentView('room');
+  };
+
+  const handleLeaveRoom = () => {
+    setCurrentRoomId(null);
+    setCurrentView('browse');
+  };
+
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    setCurrentView('auth');
+    setCurrentRoomId(null);
+    setShowAssistant(false);
+    localStorage.removeItem('currentUser');
+  };
+
+  // Authentication screen
+  if (currentView === 'auth') {
+    return <AuthComponent onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700">
+      {/* Top Navigation */}
+      <nav className="bg-blue-800 border-b border-blue-600 px-6 py-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-xl font-bold text-white">🧊 Icebreaker Chat</h1>
+            {currentView !== 'browse' && (
+              <button
+                onClick={() => setCurrentView('browse')}
+                className="text-blue-200 hover:text-white text-sm"
+              >
+                ← Back to Rooms
+              </button>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {currentUser && (
+              <>
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {currentUser.display_name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="text-sm text-blue-100">{currentUser.display_name}</span>
                 </div>
-
-
-            </div>
-
+                
+                <button
+                  onClick={() => setShowAssistant(!showAssistant)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    showAssistant
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-blue-700 text-blue-200 hover:bg-blue-600 hover:text-white'
+                  }`}
+                  title="Toggle AI Assistant"
+                >
+                  🤖
+                </button>
+                
+                <button
+                  onClick={handleSignOut}
+                  className="text-sm text-blue-200 hover:text-white"
+                >
+                  Sign Out
+                </button>
+              </>
+            )}
+          </div>
         </div>
+      </nav>
 
-    ); 
+      {/* Main Content */}
+      <main className={`${showAssistant ? 'mr-80' : ''} transition-all duration-300`}>
+        {currentView === 'browse' && (
+          <RoomBrowser
+            onJoinRoom={handleJoinRoom}
+            onCreateRoom={handleCreateRoom}
+            currentUser={currentUser ? {
+              name: currentUser.display_name,
+              googleSessionId: currentUser.google_session_id
+            } : undefined}
+          />
+        )}
+
+        {currentView === 'create' && currentUser && (
+          <div className="py-8">
+            <CreateRoom
+              onRoomCreated={handleRoomCreated}
+              onCancel={() => setCurrentView('browse')}
+              currentUser={{
+                name: currentUser.display_name,
+                googleSessionId: currentUser.google_session_id
+              }}
+            />
+          </div>
+        )}
+
+        {currentView === 'room' && currentRoomId && currentUser && (
+          <IcebreakerRoom
+            sessionId={currentRoomId}
+            userName={currentUser.display_name}
+            googleSessionId={currentUser.google_session_id}
+            onLeave={handleLeaveRoom}
+          />
+        )}
+      </main>
+
+      {/* AI Assistant */}
+      <AIAssistant
+        sessionId={currentRoomId || undefined}
+        userName={currentUser?.display_name}
+        isVisible={showAssistant}
+        onToggle={() => setShowAssistant(!showAssistant)}
+      />
+    </div>
+  );
 }
