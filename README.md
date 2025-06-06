@@ -14,20 +14,24 @@
    source venv/bin/activate  # or venv\Scripts\activate on Windows  
    pip install -r requirements.txt
    ```
-3. Configure your Google Cloud OAuth 2 credentials inside the virtual environment.  
-4. Run the backend server:  
+5. Run the backend server:  
    ```bash
    python app.py
    ```
-5. If needed, update the port in `sims/api/server.ts` to match the port that `app.py` is running on (e.g. 5000 instead of 5001).
 
 ### Frontend
 
-```bash
-cd sims  
-npm install  
-npm run dev
-```
+1. Configure your Google Cloud OAuth 2 credentials inside the virtual environment.
+
+   To set this up, you can go to Google Cloud console, create a new project, go to APIs & Services > OAuth Consent Screen and configure an API Key.
+   Then, you create a `.env.local` in the frontend (/sims) directory with AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET set
+2. If needed, update the address and port in `sims/api/server.ts` to match the port that your flask backend is running on (e.g. localhost:5000 instead of 5001).
+3. Then, run the frontend npm server:
+   ```bash
+   cd sims  
+   npm install  
+   npm run dev
+   ```
 
 ## Course Info
 
